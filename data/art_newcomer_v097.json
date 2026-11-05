@@ -1,0 +1,65 @@
+{
+  "version": "0.9.7",
+  "for": "新手更容易上手 — 扇形手牌参考、廊雾节点态、低血/确认壳、tray/tooltip、关键词色、推荐高亮",
+  "hand_fan": "assets/art/ui/newcomer/hand_fan_layout.png",
+  "map_nodes": {
+    "battle_reachable": "assets/art/map/node_battle_reachable.png",
+    "battle_current": "assets/art/map/node_battle_current.png",
+    "battle_visited": "assets/art/map/node_battle_visited.png",
+    "battle_fog": "assets/art/map/node_battle_fog.png",
+    "rest_reachable": "assets/art/map/node_rest_reachable.png",
+    "rest_current": "assets/art/map/node_rest_current.png",
+    "rest_visited": "assets/art/map/node_rest_visited.png",
+    "rest_fog": "assets/art/map/node_rest_fog.png",
+    "shop_reachable": "assets/art/map/node_shop_reachable.png",
+    "shop_current": "assets/art/map/node_shop_current.png",
+    "shop_visited": "assets/art/map/node_shop_visited.png",
+    "shop_fog": "assets/art/map/node_shop_fog.png",
+    "unknown_reachable": "assets/art/map/node_unknown_reachable.png",
+    "unknown_current": "assets/art/map/node_unknown_current.png",
+    "unknown_visited": "assets/art/map/node_unknown_visited.png",
+    "unknown_fog": "assets/art/map/node_unknown_fog.png",
+    "elite_reachable": "assets/art/map/node_elite_reachable.png",
+    "elite_current": "assets/art/map/node_elite_current.png",
+    "elite_visited": "assets/art/map/node_elite_visited.png",
+    "elite_fog": "assets/art/map/node_elite_fog.png",
+    "boss_reachable": "assets/art/map/node_boss_reachable.png",
+    "boss_current": "assets/art/map/node_boss_current.png",
+    "boss_visited": "assets/art/map/node_boss_visited.png",
+    "boss_fog": "assets/art/map/node_boss_fog.png",
+    "treasure_reachable": "assets/art/map/node_treasure_reachable.png",
+    "treasure_current": "assets/art/map/node_treasure_current.png",
+    "treasure_visited": "assets/art/map/node_treasure_visited.png",
+    "treasure_fog": "assets/art/map/node_treasure_fog.png"
+  },
+  "corridor_fog": "assets/art/map/corridor_fog.png",
+  "path_to_boss": "assets/art/map/path_to_boss.png",
+  "low_hp_banner": "assets/art/ui/newcomer/low_hp_banner.png",
+  "confirm_elite": "assets/art/ui/newcomer/confirm_elite_lowhp.png",
+  "trays": {
+    "potion": "assets/art/ui/tray/potion_tray.png",
+    "relic_bar": "assets/art/ui/tray/relic_bar.png",
+    "relic_tooltip": "assets/art/ui/tray/relic_tooltip.png"
+  },
+  "keywords": {
+    "回响": "assets/art/ui/keywords/kw_回响.png",
+    "余烬": "assets/art/ui/keywords/kw_余烬.png",
+    "易伤": "assets/art/ui/keywords/kw_易伤.png",
+    "虚弱": "assets/art/ui/keywords/kw_虚弱.png",
+    "中毒": "assets/art/ui/keywords/kw_中毒.png",
+    "格挡": "assets/art/ui/keywords/kw_格挡.png",
+    "力量": "assets/art/ui/keywords/kw_力量.png",
+    "光盾": "assets/art/ui/keywords/kw_光盾.png",
+    "消耗": "assets/art/ui/keywords/kw_消耗.png",
+    "固有": "assets/art/ui/keywords/kw_固有.png"
+  },
+  "newcomer": {
+    "recommend_glow": "assets/art/ui/newcomer/card_recommend_glow.png",
+    "danger_intent": "assets/art/ui/newcomer/danger_intent_tip.png",
+    "end_turn_pulse": "assets/art/ui/newcomer/end_turn_pulse.png"
+  },
+  "vfx": {
+    "block_tonk": "assets/art/vfx/block_tonk.png"
+  },
+  "wire": "Gobot：地图四态节点；低血横幅+确认框；tray 常显；关键词【】用色表；推荐牌用 recommend_glow"
+}

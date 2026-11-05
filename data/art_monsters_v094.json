@@ -1,0 +1,121 @@
+{
+  "version": "0.9.4",
+  "style": "冷灰高对比剪影 + 物种色相描边；精英金角；Boss 外晕；意图圆标 STS 可读",
+  "enemies": {
+    "fog_wolf": {
+      "name": "雾狼",
+      "tier": "normal",
+      "path": "assets/art/enemies/fog_wolf.png",
+      "accent": "#8CA0AA"
+    },
+    "carrion_crow": {
+      "name": "腐鸦",
+      "tier": "normal",
+      "path": "assets/art/enemies/carrion_crow.png",
+      "accent": "#5A8C50"
+    },
+    "road_bandit": {
+      "name": "路匪",
+      "tier": "normal",
+      "path": "assets/art/enemies/road_bandit.png",
+      "accent": "#C8A06E"
+    },
+    "twin_shade": {
+      "name": "双影",
+      "tier": "normal",
+      "path": "assets/art/enemies/twin_shade.png",
+      "accent": "#A078B4"
+    },
+    "fog_alpha": {
+      "name": "雾魁",
+      "tier": "elite",
+      "path": "assets/art/enemies/fog_alpha.png",
+      "accent": "#AAC8DC"
+    },
+    "mist_beast": {
+      "name": "雾行兽",
+      "tier": "boss",
+      "path": "assets/art/enemies/mist_beast.png",
+      "accent": "#B4D2E6"
+    },
+    "oil_spitter": {
+      "name": "油喷客",
+      "tier": "normal",
+      "path": "assets/art/enemies/oil_spitter.png",
+      "accent": "#78B45A"
+    },
+    "rust_rat": {
+      "name": "锈鼠",
+      "tier": "normal",
+      "path": "assets/art/enemies/rust_rat.png",
+      "accent": "#C87846"
+    },
+    "scrap_guard": {
+      "name": "废铁卫",
+      "tier": "normal",
+      "path": "assets/art/enemies/scrap_guard.png",
+      "accent": "#A0A5AA"
+    },
+    "rust_captain": {
+      "name": "锈队长",
+      "tier": "elite",
+      "path": "assets/art/enemies/rust_captain.png",
+      "accent": "#DCA050"
+    },
+    "slag_heart": {
+      "name": "熔渣心核",
+      "tier": "boss",
+      "path": "assets/art/enemies/slag_heart.png",
+      "accent": "#FF8C3C"
+    },
+    "rot_crow": {
+      "name": "腐鸦",
+      "tier": "normal",
+      "path": "assets/art/enemies/rot_crow.png",
+      "accent": "#5A8C50"
+    },
+    "bandit": {
+      "name": "路匪",
+      "tier": "normal",
+      "path": "assets/art/enemies/bandit.png",
+      "accent": "#C8A06E"
+    },
+    "fog_beast": {
+      "name": "雾行兽",
+      "tier": "boss",
+      "path": "assets/art/enemies/fog_beast.png",
+      "accent": "#B4D2E6"
+    },
+    "ch1_normal_02": {
+      "name": "枯骨哨兵",
+      "tier": "normal",
+      "path": "assets/art/enemies/ch1_normal_02.png",
+      "accent": "#A99C7D"
+    }
+  },
+  "intents": {
+    "attack": "assets/art/ui/intents/attack.png",
+    "attack_multi": "assets/art/ui/intents/attack_multi.png",
+    "defend": "assets/art/ui/intents/defend.png",
+    "buff": "assets/art/ui/intents/buff.png",
+    "debuff": "assets/art/ui/intents/debuff.png",
+    "poison": "assets/art/ui/intents/poison.png",
+    "charge": "assets/art/ui/intents/charge.png",
+    "summon": "assets/art/ui/intents/summon.png",
+    "unknown": "assets/art/ui/intents/unknown.png",
+    "escape": "assets/art/ui/intents/escape.png"
+  },
+  "hp_shells": {
+    "normal": "assets/art/ui/enemy_hp_normal.png",
+    "elite": "assets/art/ui/enemy_hp_elite.png",
+    "boss": "assets/art/ui/enemy_hp_boss.png"
+  },
+  "lineup": "assets/art/ui/enemy_lineup_v094.png",
+  "phase_banners": [
+    "assets/art/ui/phase_banner_fog.png",
+    "assets/art/ui/phase_banner_slag.png",
+    "assets/art/ui/phase_banner_n3.png",
+    "assets/art/ui/phase_banner_n4.png"
+  ],
+  "notes": "数值/意图序列仍归遭遇表；本包只升可读与压迫感。"
+}

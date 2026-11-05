@@ -1,0 +1,38 @@
+{
+  "version": "0.9.6",
+  "goal": "游玩体验：教学高亮、能量可读、结束回合状态、飘字、可打出/可点目标、受击/死亡反馈、地图教学圈",
+  "coach": {
+    "highlight_ring": "assets/art/ui/coach/highlight_ring.png",
+    "arrow_down": "assets/art/ui/coach/arrow_down.png",
+    "focus_dim": "assets/art/ui/coach/focus_dim.png",
+    "map_battle": "assets/art/ui/coach/map_node_battle.png",
+    "map_rest": "assets/art/ui/coach/map_node_rest.png"
+  },
+  "playfeel": {
+    "energy_pip": "assets/art/ui/playfeel/energy_pip.png",
+    "energy_pip_empty": "assets/art/ui/playfeel/energy_pip_empty.png",
+    "btn_end_turn": {
+      "idle": "assets/art/ui/playfeel/btn_end_turn_idle.png",
+      "hover": "assets/art/ui/playfeel/btn_end_turn_hover.png",
+      "disabled": "assets/art/ui/playfeel/btn_end_turn_disabled.png",
+      "coach": "assets/art/ui/playfeel/btn_end_turn_coach.png"
+    },
+    "card_playable_glow": "assets/art/ui/playfeel/card_playable_glow.png",
+    "card_unplayable_veil": "assets/art/ui/playfeel/card_unplayable_veil.png",
+    "target_legal": "assets/art/ui/playfeel/target_legal.png",
+    "floats": {
+      "dmg": "assets/art/ui/playfeel/float_dmg.png",
+      "block": "assets/art/ui/playfeel/float_block.png",
+      "heal": "assets/art/ui/playfeel/float_heal.png",
+      "poison": "assets/art/ui/playfeel/float_poison.png",
+      "echo": "assets/art/ui/playfeel/float_echo.png",
+      "ember": "assets/art/ui/playfeel/float_ember.png"
+    }
+  },
+  "vfx": {
+    "hit_flash": "assets/art/vfx/hit_flash_soft.png",
+    "death_mist_n1": "assets/art/vfx/death_mist.png",
+    "death_slag_n2": "assets/art/vfx/death_slag.png"
+  },
+  "wire_for": "Gobot — coach_steps 用 highlight_ring+arrow；可打出牌挂 playable_glow；不够费挂 veil；意图数字继续用大号 float"
+}

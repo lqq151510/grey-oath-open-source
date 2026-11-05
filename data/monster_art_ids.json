@@ -1,0 +1,127 @@
+{
+  "version": "0.9.5",
+  "note": "遭遇 art_id 权威表；立绘挂 assets/art/enemies/<base_id>.png。Boss 半血换 phase2_path（有图才换）。",
+  "priority_draw": [
+    "enemy_fog_wolf",
+    "enemy_rust_rat",
+    "enemy_scrap_guard",
+    "enemy_rust_captain",
+    "enemy_slag_heart"
+  ],
+  "entries": [
+    {
+      "art_id": "enemy_fog_wolf",
+      "file": "fog_wolf.png",
+      "tier": "normal",
+      "night": 1,
+      "encounter_base": "fog_wolf",
+      "path": "assets/art/enemies/fog_wolf.png"
+    },
+    {
+      "art_id": "enemy_carrion_crow",
+      "file": "rot_crow.png",
+      "tier": "normal",
+      "night": 1,
+      "encounter_base": "carrion_crow",
+      "path": "assets/art/enemies/rot_crow.png"
+    },
+    {
+      "art_id": "enemy_road_bandit",
+      "file": "bandit.png",
+      "tier": "normal",
+      "night": 1,
+      "encounter_base": "road_bandit",
+      "path": "assets/art/enemies/bandit.png"
+    },
+    {
+      "art_id": "enemy_mist_pair",
+      "file": "twin_shade.png",
+      "tier": "normal",
+      "night": 1,
+      "encounter_base": "mist_pair",
+      "path": "assets/art/enemies/twin_shade.png"
+    },
+    {
+      "art_id": "enemy_fog_alpha",
+      "file": "fog_alpha.png",
+      "tier": "elite",
+      "night": 1,
+      "encounter_base": "fog_alpha",
+      "path": "assets/art/enemies/fog_alpha.png"
+    },
+    {
+      "art_id": "enemy_mist_beast",
+      "file": "fog_beast.png",
+      "tier": "boss",
+      "night": 1,
+      "phase2_art_id": "enemy_mist_beast_p2",
+      "encounter_base": "mist_beast",
+      "path": "assets/art/enemies/fog_beast.png",
+      "phase2_path": "assets/art/enemies/mist_beast_p2.png"
+    },
+    {
+      "art_id": "enemy_rust_rat",
+      "file": "rust_rat.png",
+      "tier": "normal",
+      "night": 2,
+      "encounter_base": "rust_rat",
+      "path": "assets/art/enemies/rust_rat.png"
+    },
+    {
+      "art_id": "enemy_scrap_guard",
+      "file": "scrap_guard.png",
+      "tier": "normal",
+      "night": 2,
+      "encounter_base": "scrap_guard",
+      "path": "assets/art/enemies/scrap_guard.png"
+    },
+    {
+      "art_id": "enemy_pinch_pair",
+      "file": "rust_crow.png",
+      "tier": "normal",
+      "night": 2,
+      "encounter_base": "pinch_pair",
+      "path": "assets/art/enemies/rust_crow.png"
+    },
+    {
+      "art_id": "enemy_oil_spitter",
+      "file": "oil_spitter.png",
+      "tier": "normal",
+      "night": 2,
+      "encounter_base": "oil_spitter",
+      "path": "assets/art/enemies/oil_spitter.png"
+    },
+    {
+      "art_id": "enemy_rust_captain",
+      "file": "rust_captain.png",
+      "tier": "elite",
+      "night": 2,
+      "encounter_base": "rust_captain",
+      "path": "assets/art/enemies/rust_captain.png"
+    },
+    {
+      "art_id": "enemy_slag_heart",
+      "file": "slag_heart.png",
+      "tier": "boss",
+      "night": 2,
+      "phase2_art_id": "enemy_slag_heart_p2",
+      "encounter_base": "slag_heart",
+      "path": "assets/art/enemies/slag_heart.png",
+      "phase2_path": "assets/art/enemies/slag_heart_p2.png"
+    },
+    {
+      "art_id": "enemy_ch1_normal_02",
+      "file": "ch1_normal_02.png",
+      "tier": "normal",
+      "night": 1,
+      "encounter_base": "ch1_normal_02",
+      "path": "assets/art/enemies/ch1_normal_02.png"
+    }
+  ],
+  "rules": {
+    "normal": "单色剪影",
+    "elite": "描边加刺+角饰",
+    "boss": "大轮廓；hp<=50% 换 phase2",
+    "intent": "头顶意图压在立绘之上"
+  }
+}

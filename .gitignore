@@ -1,0 +1,15 @@
+.godot/
+.tools/
+.state/
+.serena/
+.cursor/
+build/
+__pycache__/
+*.py[cod]
+.env
+.env.*
+*.tmp
+*.log
+.DS_Store
+tests/output/
+交付/

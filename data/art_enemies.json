@@ -1,0 +1,51 @@
+{
+  "version": "0.9.4",
+  "note": "怪物美学 v0.9.4：立绘优先 assets/art/enemies/<base_id>.png；意图圆标 ui/intents/；三档血条壳。bosses/ 仅兜底。",
+  "portrait_dir": "assets/art/enemies/",
+  "by_name": {
+    "雾狼": "fog_wolf.png",
+    "雾首狼": "fog_alpha.png",
+    "雾魁": "fog_alpha.png",
+    "雾行兽": "mist_beast.png",
+    "腐鸦": "carrion_crow.png",
+    "路匪": "road_bandit.png",
+    "雾中双影": "twin_shade.png",
+    "双影": "twin_shade.png",
+    "锈鼠": "rust_rat.png",
+    "废铁卫": "scrap_guard.png",
+    "夹击锈鸦": "carrion_crow.png",
+    "锈鸦": "carrion_crow.png",
+    "油溅虫": "oil_spitter.png",
+    "锈刃百夫": "rust_captain.png",
+    "锈队长": "rust_captain.png",
+    "熔渣心核": "slag_heart.png",
+    "枯骨哨兵": "ch1_normal_02.png"
+  },
+  "rings": {
+    "normal": "assets/art/ui/enemy_ring_normal.png",
+    "elite": "assets/art/ui/enemy_ring_elite.png",
+    "boss": "assets/art/ui/enemy_ring_boss.png"
+  },
+  "intent_icons": {
+    "attack": "assets/art/ui/intents/attack.png",
+    "attack_multi": "assets/art/ui/intents/attack_multi.png",
+    "defend": "assets/art/ui/intents/defend.png",
+    "buff": "assets/art/ui/intents/buff.png",
+    "debuff": "assets/art/ui/intents/debuff.png",
+    "poison": "assets/art/ui/intents/poison.png",
+    "charge": "assets/art/ui/intents/charge.png",
+    "summon": "assets/art/ui/intents/summon.png",
+    "unknown": "assets/art/ui/intents/unknown.png",
+    "escape": "assets/art/ui/intents/escape.png"
+  },
+  "hp_bar": {
+    "bg": "assets/art/ui/enemy_hp_bar_bg.png",
+    "fill": "assets/art/ui/enemy_hp_bar_fill.png"
+  },
+  "shadow": "assets/art/ui/enemy_ground_shadow.png",
+  "hp_shells": {
+    "normal": "assets/art/ui/enemy_hp_normal.png",
+    "elite": "assets/art/ui/enemy_hp_elite.png",
+    "boss": "assets/art/ui/enemy_hp_boss.png"
+  }
+}

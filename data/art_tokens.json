@@ -1,0 +1,485 @@
+{
+  "version": "0.9.5",
+  "base": {
+    "bg": "#090B0C",
+    "panel": "#12161A",
+    "text": "#D8DEE3",
+    "muted": "#6B6E70"
+  },
+  "travelers": {
+    "灰烬卫": {
+      "primary": "#6B6E70",
+      "accent": "#A63D2F",
+      "id": "ashguard"
+    },
+    "织影": {
+      "primary": "#1A3A42",
+      "accent": "#2E6B75",
+      "id": "weaver"
+    },
+    "烬咒": {
+      "primary": "#4A2A55",
+      "accent": "#A63D2F",
+      "id": "embermage"
+    },
+    "誓灯": {
+      "primary": "#D8DEE3",
+      "accent": "#F0E6C8",
+      "id": "lamplight"
+    },
+    "拾骸": {
+      "primary": "#C9B8A0",
+      "accent": "#7A4E32",
+      "id": "scavenger"
+    },
+    "回响抄钟人": {
+      "primary": "#73C5B5",
+      "accent": "#E0CA92",
+      "id": "bellscribe",
+      "portrait": "assets/art/roles/bellscribe.png"
+    },
+    "灰脉巡灯人": {
+      "primary": "#DB9162",
+      "accent": "#FFC37C",
+      "id": "ashlamper",
+      "portrait": "assets/art/roles/ashlamper.png"
+    }
+  },
+  "branch_labels": {
+    "灰烬卫": {
+      "A": "厚盾反击",
+      "B": "有盾更疼",
+      "bridge": "两用"
+    },
+    "织影": {
+      "A": "叠毒",
+      "B": "暗手",
+      "bridge": "两用"
+    },
+    "烬咒": {
+      "A": "血爆",
+      "B": "血资",
+      "bridge": "两用"
+    },
+    "誓灯": {
+      "A": "光盾",
+      "B": "承伤",
+      "bridge": "两用"
+    },
+    "拾骸": {
+      "A": "消耗",
+      "B": "弃掘",
+      "bridge": "两用"
+    },
+    "回响抄钟人": {
+      "A": "回响",
+      "B": "择机",
+      "bridge": "两用"
+    },
+    "灰脉巡灯人": {
+      "A": "余烬",
+      "B": "引燃",
+      "bridge": "两用"
+    }
+  },
+  "icons": [
+    "block",
+    "counter",
+    "dmg",
+    "energy",
+    "exhaust",
+    "frail",
+    "intent_attack",
+    "intent_block",
+    "intent_buff",
+    "intent_charge",
+    "intent_poison",
+    "intent_summon",
+    "intent_vulnerable",
+    "intent_weak",
+    "light_shield",
+    "poison",
+    "retain",
+    "strength",
+    "vulnerable",
+    "weak"
+  ],
+  "paths": {
+    "frames": "assets/art/frames/",
+    "icons": "assets/art/icons/",
+    "ui": "assets/art/ui/"
+  },
+  "keyword_tips_icons": {
+    "格挡": "block",
+    "反击": "counter",
+    "中毒": "poison",
+    "光盾": "light_shield",
+    "虚弱": "weak",
+    "易伤": "vulnerable",
+    "脆弱": "frail",
+    "力量": "strength",
+    "消耗": "exhaust",
+    "保留": "retain",
+    "能量": "energy"
+  },
+  "intent_icons": {
+    "attack": "assets/art/ui/intents/attack.png",
+    "attack_multi": "assets/art/ui/intents/attack_multi.png",
+    "defend": "assets/art/ui/intents/defend.png",
+    "buff": "assets/art/ui/intents/buff.png",
+    "debuff": "assets/art/ui/intents/debuff.png",
+    "poison": "assets/art/ui/intents/poison.png",
+    "charge": "assets/art/ui/intents/charge.png",
+    "summon": "assets/art/ui/intents/summon.png",
+    "unknown": "assets/art/ui/intents/unknown.png",
+    "escape": "assets/art/ui/intents/escape.png"
+  },
+  "mvp_art_order": [
+    "占位色块卡框（五旅者色条）",
+    "关键词/意图图标占位（圆标+首字）",
+    "战斗 HUD 按 art_battle_ui_v01 搭",
+    "第一夜敌剪影：雾狼/腐鸦/劫匪/双影/雾首狼/雾行兽"
+  ],
+  "placeholders": {
+    "chars": {
+      "灰烬卫": "assets/art/chars/ashguard.png",
+      "织影": "assets/art/chars/weaver.png",
+      "烬咒": "assets/art/chars/embermage.png",
+      "誓灯": "assets/art/chars/lamplight.png",
+      "拾骸": "assets/art/chars/scavenger.png",
+      "回响抄钟人": "assets/art/chars/bellscribe.png",
+      "灰脉巡灯人": "assets/art/chars/ashlamper.png"
+    },
+    "night1_enemies": {
+      "雾狼": "assets/art/bosses/fog_wolf.png",
+      "腐鸦": "assets/art/bosses/rot_crow.png",
+      "劫匪": "assets/art/bosses/bandit.png",
+      "双影": "assets/art/bosses/twin_shade.png",
+      "雾首狼": "assets/art/bosses/fog_alpha.png",
+      "雾行兽": "assets/art/bosses/fog_beast.png"
+    },
+    "night1_bg": "assets/art/nights/night1_wasteland.png",
+    "ui": {
+      "energy_pip": "assets/art/ui/energy_pip.png",
+      "energy_pip_empty": "assets/art/ui/energy_pip_empty.png",
+      "btn_end_turn": "assets/art/ui/btn_end_turn.png"
+    },
+    "night2_enemies": {
+      "锈鼠": "assets/art/bosses/rust_rat.png",
+      "废铁卫": "assets/art/bosses/scrap_guard.png",
+      "夹击锈鸦": "assets/art/bosses/rust_crow.png",
+      "油溅虫": "assets/art/bosses/oil_spitter.png",
+      "锈刃百夫": "assets/art/bosses/rust_captain.png",
+      "熔渣心核": "assets/art/bosses/slag_heart.png"
+    },
+    "night2_bg": "assets/art/nights/night2_rustcity.png"
+  },
+  "readability_pass": {
+    "intent_min_font_px": 18,
+    "intent_number_emphasis": true,
+    "branch_label_contrast": "深底+旅者描边",
+    "avoid": "低对比灰字、花哨特效挡数字",
+    "card_frame": "铁框3px + 旅者顶条24px + 费用珠描边发光"
+  },
+  "sts_readability": {
+    "intent_damage_font_px": 42,
+    "intent_label_font_px": 17,
+    "hp_font_px": 18,
+    "card_cost_font_px": 34,
+    "card_body_font_px": 15,
+    "intent_number_color": "#F0E6C8",
+    "intent_number_outline": "#090B0C",
+    "keyword_colors": {
+      "damage": "#E8B4A0",
+      "格挡": "#A8B4C0",
+      "反击": "#A63D2F",
+      "中毒": "#6B8F5A",
+      "光盾": "#F0E6C8",
+      "虚弱": "#9B7BB8",
+      "易伤": "#9B7BB8",
+      "脆弱": "#9B7BB8",
+      "力量": "#A63D2F",
+      "消耗": "#C9B8A0",
+      "保留": "#C9B8A0"
+    },
+    "layout_priority": [
+      "enemy_intent",
+      "enemy_hp_block",
+      "player_hp_energy",
+      "hand",
+      "end_turn"
+    ],
+    "charge_intent_scale": 1.2,
+    "intent_plate": "assets/art/ui/intent_number_plate.png",
+    "intent_outline_px": 3,
+    "intent_plate_charge": "assets/art/ui/intent_number_plate_charge.png",
+    "card_name_font_px": 20
+  },
+  "main_menu": {
+    "layout": "sts_vertical",
+    "items": [
+      "继续",
+      "新的旅程",
+      "卡牌图鉴",
+      "成就",
+      "设置",
+      "退出"
+    ],
+    "splash": "assets/art/ui/title_splash.png",
+    "button_assets": {
+      "继续": "assets/art/ui/menu_continue.png",
+      "新的旅程": "assets/art/ui/menu_new_run.png",
+      "卡牌图鉴": "assets/art/ui/menu_compendium.png",
+      "成就": "assets/art/ui/menu_achievements.png",
+      "设置": "assets/art/ui/menu_settings.png",
+      "退出": "assets/art/ui/menu_quit.png"
+    },
+    "compose_doc": "docs/art_title_compose_v01.md",
+    "motion": "data/art_motion_placeholders.json",
+    "tagline": "七名旅者 · 四重长夜"
+  },
+  "compendium": {
+    "header": "assets/art/ui/compendium_header.png",
+    "grid_columns": 5,
+    "filters": [
+      "traveler",
+      "branch_label",
+      "rarity",
+      "locked_only"
+    ]
+  },
+  "achievements": {
+    "badge": "assets/art/ui/achievement_badge.png",
+    "starter_list": [
+      "初入荒途",
+      "主线成形",
+      "雾行兽殒",
+      "图鉴学徒",
+      "不死之夜"
+    ]
+  },
+  "juice": {
+    "play_card_lift_px": 14,
+    "damage_float_color": "#E8B4A0",
+    "block_float_color": "#A8B4C0",
+    "screen_shake_max_px": 5,
+    "no_fullscreen_vfx": true
+  },
+  "visual_pass": {
+    "version": "0.8.1",
+    "focus": "夜二锈城氛围 + Boss阶段表现 + 长战斗读屏",
+    "night2_bg": "assets/art/nights/night2_rustcity.png",
+    "phase_banners": [
+      "assets/art/ui/phase_banner_fog.png",
+      "assets/art/ui/phase_banner_slag.png"
+    ],
+    "charge_telegraph": "assets/art/vfx/charge_telegraph.png",
+    "combat_vignette": "assets/art/ui/combat_vignette.png",
+    "float_styles": [
+      "assets/art/ui/float_dmg.png",
+      "assets/art/ui/float_block.png",
+      "assets/art/ui/float_poison.png"
+    ],
+    "boss_phase_pips": "assets/art/ui/boss_phase_pips.png",
+    "preview": "docs/art_preview_v07.html",
+    "card_frames": {
+      "bellscribe": "assets/art/frames/card_bellscribe.png",
+      "ashlamper": "assets/art/frames/card_ashlamper.png"
+    }
+  },
+  "battle_fx": "data/battle_fx_ids.json",
+  "vfx_strips": "assets/art/vfx/",
+  "map_corridors": "data/art_map_corridors.json",
+  "branch_capsules": {
+    "厚盾反击": "assets/art/ui/capsule_厚盾反击.png",
+    "有盾更疼": "assets/art/ui/capsule_有盾更疼.png",
+    "叠毒": "assets/art/ui/capsule_叠毒.png",
+    "暗手": "assets/art/ui/capsule_暗手.png",
+    "血爆": "assets/art/ui/capsule_血爆.png",
+    "血资": "assets/art/ui/capsule_血资.png",
+    "光盾": "assets/art/ui/capsule_光盾.png",
+    "承伤": "assets/art/ui/capsule_承伤.png",
+    "消耗": "assets/art/ui/capsule_消耗.png",
+    "弃掘": "assets/art/ui/capsule_弃掘.png",
+    "两用": "assets/art/ui/capsule_两用.png",
+    "火花": "assets/art/ui/capsule_火花.png",
+    "霜障": "assets/art/ui/capsule_霜障.png",
+    "吞咒": "assets/art/ui/capsule_吞咒.png",
+    "嫁祸": "assets/art/ui/capsule_嫁祸.png"
+  },
+  "sts_pass": {
+    "version": "0.5.0",
+    "title": {
+      "splash": "assets/art/ui/title_splash.png",
+      "fog_parallax": [
+        "assets/art/nights/fog_far.png",
+        "assets/art/nights/fog_mid.png",
+        "assets/art/nights/fog_near.png"
+      ],
+      "oathfire_2f": "assets/art/ui/oathfire_2f.png",
+      "oathfire_frames": [
+        "assets/art/ui/oathfire_f0.png",
+        "assets/art/ui/oathfire_f1.png"
+      ],
+      "menu_letter_spacing": "wide_pad",
+      "note": "雾层视差滚动；誓火 2 帧循环；菜单字距用全角空格+左色条悬停"
+    },
+    "card": {
+      "type_scale": {
+        "cost_px": 34,
+        "name_px": 20,
+        "body_px": 15
+      },
+      "samples": {
+        "cost": "assets/art/ui/type_cost_sample.png",
+        "name": "assets/art/ui/type_name_sample.png",
+        "body": "assets/art/ui/type_body_sample.png",
+        "composed": "assets/art/frames/card_typography_preview.png"
+      },
+      "locked": "assets/art/frames/card_locked.png",
+      "unknown_locked": "assets/art/frames/card_unknown_locked.png",
+      "rule": "插画窗不盖费用珠与名字条；未解锁真灰+锁标"
+    },
+    "battle_map": {
+      "intent_plate": "assets/art/ui/intent_number_plate.png",
+      "intent_plate_charge": "assets/art/ui/intent_number_plate_charge.png",
+      "intent_outline_px": 3,
+      "node_hover_suffix": "_hover",
+      "node_hover_scale": 1.12,
+      "fog_hud_clear_px": 120,
+      "corridor_hudsafe_suffix": "_hudsafe",
+      "rule": "三廊雾与 fog_* 底 120px 透明，不压血条"
+    },
+    "meta_ui": {
+      "relics": "data/art_relics.json",
+      "event_panel": "assets/art/ui/event_panel.png",
+      "shop_panel": "assets/art/ui/shop_panel.png",
+      "relic_pick": "assets/art/ui/relic_pick_panel.png",
+      "relic_bar": "assets/art/ui/relic_bar.png"
+    },
+    "combat_vfx_core": {
+      "damage": "assets/art/vfx/damage.png",
+      "block": "assets/art/vfx/block.png",
+      "poison": "assets/art/vfx/poison.png",
+      "counter": "assets/art/vfx/counter.png",
+      "light_shield": "assets/art/vfx/light_shield.png",
+      "hp_loss": "assets/art/vfx/hp_loss.png"
+    },
+    "preview": "docs/art_sts_compare_v05.html",
+    "relic_icon_px": 32,
+    "relic_icons_32_suffix": "_32",
+    "potion_tray": "assets/art/ui/potion_tray.png",
+    "blessing": "assets/art/ui/blessing_panel.png",
+    "map_hover": "assets/art/ui/map_hover_type_only.png",
+    "night2_grey": "assets/art/nights/night2_rustcity_grey.png"
+  },
+  "gameplay_ui": "data/art_gameplay_ui.json",
+  "boss_phases": "data/art_boss_phases.json",
+  "art_polish_v071": {
+    "focus": "可读+手感：意图大一号、受击闪红、格挡Tonk、夜分层、标题誓火",
+    "colorless_frames": "assets/art/frames/card_colorless*.png",
+    "curse_frame": "assets/art/frames/card_curse.png",
+    "boss_relic_32_outline": "assets/art/relics/*_32.png",
+    "phase_banners_ref": "data/art_boss_phases.json",
+    "title": {
+      "splash": "assets/art/ui/title_splash.png",
+      "oathfire": [
+        "assets/art/ui/oathfire_f0.png",
+        "assets/art/ui/oathfire_f1.png",
+        "assets/art/ui/oathfire_2f.png"
+      ],
+      "dim": true
+    },
+    "map": {
+      "night1": "assets/art/nights/night1_wasteland.png",
+      "night2": "assets/art/nights/night2_rustcity.png",
+      "visited_fade": 0.45,
+      "current_highlight": true
+    }
+  },
+  "card_shell": "data/art_card_shell_v071.json",
+  "sts_parity": "data/art_sts_parity.json",
+  "traveler_count": 7,
+  "traveler_select_row": "assets/art/ui/traveler_select_row7.png",
+  "art_travelers_7": "data/art_travelers_7.json",
+  "select_order": [
+    "灰烬卫",
+    "织影",
+    "烬咒",
+    "誓灯",
+    "拾骸",
+    "回响抄钟人",
+    "灰脉巡灯人"
+  ],
+  "roles_authority": "traveler_roster.json",
+  "roles_dir": "assets/art/roles/",
+  "chars_by_traveler": {
+    "灰烬卫": "assets/art/chars/ashguard.png",
+    "织影": "assets/art/chars/weaver.png",
+    "烬咒": "assets/art/chars/embermage.png",
+    "誓灯": "assets/art/chars/lamplight.png",
+    "拾骸": "assets/art/chars/scavenger.png",
+    "回响抄钟人": "assets/art/roles/bellscribe.svg",
+    "灰脉巡灯人": "assets/art/roles/ashlamper.svg"
+  },
+  "catalog_note": "第六/七人权威 catalog roles：bellscribe/ashlamper；雷匣咎影停用。",
+  "deprecated_art": [
+    "thunderbox",
+    "guiltshade"
+  ],
+  "role_svgs": {
+    "bellscribe": "assets/art/chars/bellscribe.svg",
+    "ashlamper": "assets/art/chars/ashlamper.svg"
+  },
+  "deprecated": [
+    "雷匣",
+    "咎影",
+    "thunderbox",
+    "guiltshade"
+  ],
+  "style_ref": "assets/art/refs/style_lineup_travelers.png",
+  "style_lock_version": "0.9.6",
+  "enemies": {
+    "fog_wolf": "assets/art/enemies/fog_wolf.png",
+    "carrion_crow": "assets/art/enemies/carrion_crow.png",
+    "road_bandit": "assets/art/enemies/road_bandit.png",
+    "twin_shade": "assets/art/enemies/twin_shade.png",
+    "fog_alpha": "assets/art/enemies/fog_alpha.png",
+    "mist_beast": "assets/art/enemies/mist_beast.png",
+    "oil_spitter": "assets/art/enemies/oil_spitter.png",
+    "rust_rat": "assets/art/enemies/rust_rat.png",
+    "scrap_guard": "assets/art/enemies/scrap_guard.png",
+    "rust_captain": "assets/art/enemies/rust_captain.png",
+    "slag_heart": "assets/art/enemies/slag_heart.png",
+    "rot_crow": "assets/art/enemies/rot_crow.png",
+    "bandit": "assets/art/enemies/bandit.png",
+    "fog_beast": "assets/art/enemies/fog_beast.png"
+  },
+  "enemy_hp_shells": {
+    "normal": "assets/art/ui/enemy_hp_normal.png",
+    "elite": "assets/art/ui/enemy_hp_elite.png",
+    "boss": "assets/art/ui/enemy_hp_boss.png"
+  },
+  "enemy_lineup": "assets/art/ui/enemy_lineup_v094.png",
+  "enemy_art": "data/art_enemies.json",
+  "enemy_art_note": "v0.9.4 怪物肖像美学升级；战斗读 art_enemies",
+  "role_portraits": {
+    "bellscribe": "assets/art/roles/bellscribe.png",
+    "ashlamper": "assets/art/roles/ashlamper.png"
+  },
+  "hud_resources": {
+    "回响": "assets/art/ui/hud/echo.png",
+    "余烬": "assets/art/ui/hud/ember.png",
+    "echo": "assets/art/ui/hud/echo.png",
+    "ember": "assets/art/ui/hud/ember.png"
+  },
+  "style_bible": "assets/art/refs/style_lineup_travelers.png",
+  "lineup_seven": "assets/art/roles/lineup_seven.png",
+  "catalog_front_five_ids": [
+    "warden",
+    "ranger",
+    "sister",
+    "arcanist",
+    "medium"
+  ]
+}
