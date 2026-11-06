@@ -13,3 +13,6 @@ __pycache__/
 .DS_Store
 tests/output/
 交付/
+
+# WorkBuddy local state
+.workbuddy/
