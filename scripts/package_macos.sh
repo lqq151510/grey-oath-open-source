@@ -3,8 +3,12 @@
 set -euo pipefail
 
 project_root="$(cd "$(dirname "$0")/.." && pwd)"
+# Prefer the pinned local editor; fall back to a system-wide Godot 4.7.2 stable
+# so a clean checkout can package without re-downloading the editor.
 godot_bin="$project_root/.tools/Godot.app/Contents/MacOS/Godot"
-template_zip="$project_root/.tools/export_templates/4.7.2.stable/macos.zip"
+if [[ ! -x "$godot_bin" ]]; then
+  godot_bin="$(command -v godot || true)"
+fi
 build_dir="${GREY_OATH_BUILD_DIR:-$project_root/build}"
 build_dir="$(python3 - "$build_dir" <<'PY'
 from pathlib import Path
@@ -22,8 +26,8 @@ app_path="$build_dir/灰誓.app"
 zip_path="$build_dir/灰誓-macOS.zip"
 dmg_path="$build_dir/灰誓-macOS.dmg"
 
-if [[ ! -x "$godot_bin" || ! -f "$template_zip" ]]; then
-  printf '%s\n' 'Missing local toolchain. Run: python3 scripts/setup_engine.py' >&2
+if [[ -z "$godot_bin" || ! -x "$godot_bin" ]]; then
+  printf '%s\n' 'Missing Godot 4.7.2 stable. Run: python3 scripts/setup_engine.py --editor-only' >&2
   exit 1
 fi
 if [[ "$("$godot_bin" --version)" != 4.7.2.stable* ]]; then

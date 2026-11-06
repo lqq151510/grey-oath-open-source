@@ -12,7 +12,7 @@ config_version=5
 
 config/name="灰誓"
 config/description="七名旅者，四重长夜。暗黑奇幻卡牌冒险。"
-config/version="0.2.2"
+config/version="0.2.3"
 run/main_scene="res://scenes/update_bootstrap.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 config/icon="res://assets/art/icon.png"
