@@ -129,6 +129,8 @@ var _camera: Camera3D = null
 var _key_light: DirectionalLight3D = null
 var _fill_light: DirectionalLight3D = null
 var _rim_light: DirectionalLight3D = null
+var _warm_rim: DirectionalLight3D = null
+var _bounce_light: DirectionalLight3D = null
 var _world_env: WorldEnvironment = null
 var _shadow: MeshInstance3D = null
 var _ring: MeshInstance3D = null
@@ -812,7 +814,7 @@ func _flash_once(tint: Color, duration: float) -> void:
 	if not is_inside_tree():
 		return
 	var sp := _speed()
-	var white_time := 0.04 / sp
+	var white_time := 0.03 / sp
 	var fade_time := maxf(0.08, duration - white_time)
 	_flash_tween = create_tween()
 	_flash_tween.tween_interval(white_time)
@@ -827,9 +829,10 @@ func _apply_flash(value: float) -> void:
 		if mat == null:
 			continue
 		var base_color: Color = entry[1]
-		mat.albedo_color = base_color.lerp(_flash_tint, _flash * 0.88)
+		# 受击闪白保留轮廓：只压到 0.62，配合较弱的自发光，避免整个人被烧成白色剪影。
+		mat.albedo_color = base_color.lerp(_flash_tint, _flash * 0.62)
 		if bool(entry[2]):
-			mat.emission_energy_multiplier = float(entry[3]) + _flash * 3.5
+			mat.emission_energy_multiplier = float(entry[3]) + _flash * 1.4
 
 
 func _ensure_stage() -> void:
@@ -851,7 +854,7 @@ func _ensure_stage() -> void:
 	_viewport.transparent_bg = true
 	_viewport.own_world_3d = true
 	_viewport.gui_disable_input = true
-	_viewport.msaa_3d = Viewport.MSAA_2X
+	_viewport.msaa_3d = Viewport.MSAA_4X
 	_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	add_child(_viewport)
 	# ActorStage 只挂在 SubViewport 下；之前先 add_child(self) 再转挂会触发
@@ -892,22 +895,27 @@ func _create_effect_overlay() -> void:
 
 
 func _build_environment() -> void:
-	# 环境光只负责让暗部不至于死黑：能量压到 0.22，配合 ACES Tonemap 提升通透度与层次
+	# 环境光只负责让暗部不至于死黑：能量抬到 0.30，冷蓝底给暗部一点空气感，
+	# 但主体亮度仍由主光/轮廓光决定，避免低模被环境光洗成没有朝向的白模。
 	var env := Environment.new()
 	env.background_mode = Environment.BG_CLEAR_COLOR
 	env.background_color = Color(0, 0, 0, 0)
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = Color(0.24, 0.32, 0.40)
-	env.ambient_light_energy = 0.24
+	env.ambient_light_color = Color(0.26, 0.34, 0.43)
+	env.ambient_light_energy = 0.30
 	env.tonemap_mode = Environment.TONE_MAPPER_ACES
-	env.tonemap_exposure = 1.02
+	env.tonemap_exposure = 0.97
+	# 白点抬到 1.30：银甲/骨白这类高反照率材质的高光进 HDR 肩部滚降，
+	# 不再在实战小尺寸下糊成一整块过曝的白色平板。
+	env.tonemap_white = 1.30
 	env.adjustment_enabled = true
-	env.adjustment_contrast = 1.15
-	env.adjustment_saturation = 1.08
+	env.adjustment_contrast = 1.12
+	env.adjustment_saturation = 1.06
 	# 开启轻微 Glow/Bloom，让武器符文、眼瞳与余烬自发光呈现自然微晕
 	env.glow_enabled = true
-	env.glow_intensity = 0.38
-	env.glow_bloom = 0.12
+	env.glow_intensity = 0.50
+	env.glow_bloom = 0.10
+	env.glow_hdr_threshold = 1.0
 	env.glow_blend_mode = Environment.GLOW_BLEND_MODE_SOFTLIGHT
 	_world_env = WorldEnvironment.new()
 	_world_env.name = "ActorWorldEnv"
@@ -920,25 +928,64 @@ func _build_lights() -> void:
 	# 冷色轮廓光从背后勾边。三盏同时给高能量会把暗色调角色洗成白模。
 	_key_light = DirectionalLight3D.new()
 	_key_light.name = "KeyLight"
-	_key_light.rotation_degrees = Vector3(-38.0, -28.0, 0.0)
-	_key_light.light_color = Color(1.0, 0.94, 0.86)
-	_key_light.light_energy = 1.15
+	# 主光左上前 40°：略偏侧比正打更能在低模平面上拉出明暗交界，胸甲不再是平涂。
+	_key_light.rotation_degrees = Vector3(-44.0, -36.0, 0.0)
+	_key_light.light_color = Color(1.0, 0.93, 0.84)
+	_key_light.light_energy = 1.42
 	_key_light.shadow_enabled = true
-	_key_light.shadow_blur = 1.6
+	_key_light.shadow_blur = 2.0
 	_key_light.directional_shadow_max_distance = 10.0
 	_world_root.add_child(_key_light)
 	_fill_light = DirectionalLight3D.new()
 	_fill_light.name = "FillLight"
-	_fill_light.rotation_degrees = Vector3(-10.0, 116.0, 0.0)
-	_fill_light.light_color = Color(0.42, 0.58, 0.78)
-	_fill_light.light_energy = 0.18
+	_fill_light.rotation_degrees = Vector3(-14.0, 122.0, 0.0)
+	_fill_light.light_color = Color(0.40, 0.56, 0.80)
+	_fill_light.light_energy = 0.34
 	_world_root.add_child(_fill_light)
 	_rim_light = DirectionalLight3D.new()
 	_rim_light.name = "RimLight"
-	_rim_light.rotation_degrees = Vector3(-28.0, 168.0, 0.0)
+	_rim_light.rotation_degrees = Vector3(-26.0, 158.0, 0.0)
 	_rim_light.light_color = Color(0.58, 0.82, 1.0)
-	_rim_light.light_energy = 1.12
+	_rim_light.light_energy = 1.55
 	_world_root.add_child(_rim_light)
+	# 暖轮廓（背左低角）：冷边勾右侧、暖边勾左侧，两侧都有一道亮边，
+	# 角色在近黑面板上才不会被读成一团剪影。
+	_warm_rim = DirectionalLight3D.new()
+	_warm_rim.name = "WarmRimLight"
+	_warm_rim.rotation_degrees = Vector3(-16.0, -142.0, 0.0)
+	_warm_rim.light_color = Color(1.0, 0.70, 0.42)
+	_warm_rim.light_energy = 0.62
+	_world_root.add_child(_warm_rim)
+	# 地面反弹：从下往上极弱暖光，把腿甲/披风下摆从死黑里捞回来。
+	_bounce_light = DirectionalLight3D.new()
+	_bounce_light.name = "GroundBounce"
+	_bounce_light.rotation_degrees = Vector3(-104.0, 24.0, 0.0)
+	_bounce_light.light_color = Color(0.52, 0.58, 0.68)
+	_bounce_light.light_energy = 0.18
+	_world_root.add_child(_bounce_light)
+
+
+static var _soft_dot_cache: GradientTexture2D = null
+
+
+## 柔边圆点（64px）：余烬粒子共用，避免每帧新建贴图。
+func _soft_dot_texture() -> GradientTexture2D:
+	if _soft_dot_cache != null:
+		return _soft_dot_cache
+	var grad := Gradient.new()
+	grad.set_color(0, Color(1.0, 1.0, 1.0, 1.0))
+	grad.add_point(0.35, Color(1.0, 1.0, 1.0, 0.85))
+	grad.add_point(0.72, Color(1.0, 1.0, 1.0, 0.16))
+	grad.set_color(grad.get_point_count() - 1, Color(1.0, 1.0, 1.0, 0.0))
+	var tex := GradientTexture2D.new()
+	tex.gradient = grad
+	tex.width = 64
+	tex.height = 64
+	tex.fill = GradientTexture2D.FILL_RADIAL
+	tex.fill_from = Vector2(0.5, 0.5)
+	tex.fill_to = Vector2(1.0, 0.5)
+	_soft_dot_cache = tex
+	return _soft_dot_cache
 
 
 func _build_particles() -> void:
@@ -964,12 +1011,15 @@ func _build_particles() -> void:
 	_ember_particles.scale_amount_max = 1.2
 	_ember_particles.color = Color(1.0, 0.82, 0.52, 0.70)
 	var quad := QuadMesh.new()
-	quad.size = Vector2(0.016 * height, 0.016 * height)
+	quad.size = Vector2(0.022 * height, 0.022 * height)
 	var mat := StandardMaterial3D.new()
 	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	mat.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
 	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	mat.vertex_color_use_as_albedo = true
+	# 程序化柔边圆点：原来的方形贴片在实战尺寸下会被读成「坏点/噪点」，
+	# 换成径向渐隐的圆点后余烬才像飘起来的火星。
+	mat.albedo_texture = _soft_dot_texture()
 	quad.material = mat
 	_ember_particles.mesh = quad
 	_ember_particles.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -989,8 +1039,11 @@ func _build_shadow() -> void:
 	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
 	mat.no_depth_test = false
 	var grad := Gradient.new()
-	grad.set_color(0, Color(0.0, 0.0, 0.0, 0.95))
-	grad.add_point(0.38, Color(0.0, 0.0, 0.0, 0.55))
+	# 内圈更实、外圈收得更快：脚底有一块明确的暗，远处才渐隐，
+	# 接地感来自「接触」而不是一整块灰色椭圆。
+	grad.set_color(0, Color(0.0, 0.0, 0.0, 1.0))
+	grad.add_point(0.22, Color(0.0, 0.0, 0.0, 0.82))
+	grad.add_point(0.44, Color(0.0, 0.0, 0.0, 0.42))
 	grad.set_color(grad.get_point_count() - 1, Color(0.0, 0.0, 0.0, 0.0))
 	var tex := GradientTexture2D.new()
 	tex.gradient = grad
@@ -1035,8 +1088,10 @@ func _build_glow() -> void:
 	# 角色背后一块柔和舞台辉光：把人物从近黑面板上托起来，
 	# 同时用旅者/敌人的主题色勾出轮廓，不引入任何外部贴图。
 	var grad := Gradient.new()
-	grad.set_color(0, Color(1.0, 1.0, 1.0, 0.55))
-	grad.add_point(0.42, Color(1.0, 1.0, 1.0, 0.22))
+	# 辉光只做「背景提亮」不抢主体：中心 0.68 已足够把人物从近黑面板上托起来，
+	# 再高会在角色腰侧糊出一圈明显的主题色光斑。
+	grad.set_color(0, Color(1.0, 1.0, 1.0, 0.68))
+	grad.add_point(0.45, Color(1.0, 1.0, 1.0, 0.26))
 	grad.set_color(grad.get_point_count() - 1, Color(1.0, 1.0, 1.0, 0.0))
 	var tex := GradientTexture2D.new()
 	tex.gradient = grad
@@ -1128,7 +1183,8 @@ func _frame_camera() -> void:
 			# 按真实包围盒取景：悬浮/钟形等特殊体型也能占满画幅。
 			ext = maxf(bounds.size.y, maxf(bounds.size.x * 1.18, bounds.size.z * 1.18))
 			ext *= 1.04
-	var half := ext * 0.5 * 1.10
+	# 留白从 10% 收到 6%：实战面板里角色再大一点点，正面细节才看得出来。
+	var half := ext * 0.5 * 1.06
 	var dist := half / tan(deg_to_rad(_camera.fov * 0.5))
 	var direction := Vector3(0.33, 0.17, 1.0).normalized()
 	var focus := Vector3(0.0, center_y, 0.0)
@@ -1142,7 +1198,7 @@ func _frame_camera() -> void:
 	if _glow != null:
 		# 沿相机轴线往人物后方放，光晕在屏幕上正好居中，不会被斜视角推到右侧。
 		_glow.position = focus - direction * (height * 0.80)
-		_glow.scale = Vector3.ONE * (height * 1.45)
+		_glow.scale = Vector3.ONE * (height * 1.62)
 		_glow.modulate = Color(accent.r, accent.g, accent.b, 1.0)
 	if _ember_particles != null:
 		_ember_particles.emission_box_extents = Vector3(maxf(0.20, 0.30 * height), 0.05, maxf(0.20, 0.30 * height))

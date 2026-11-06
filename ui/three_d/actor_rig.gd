@@ -1135,12 +1135,21 @@ class Builder extends RefCounted:
 		var hips := pivots["Hips"] as Node3D
 		var torso := pivots["Torso"] as Node3D
 		hips.position = Vector3(0.0, 0.46 * H, 0.0)
-		torso.rotation.x = 0.30
+		torso.rotation.x = 0.22
+		# 躯干拉成「前倾鸟身」：胸脯厚、腰部收，避免三段环在正面压成一张圆盘。
+		# 躯干必须从髋部一直长到颈根（torso_len ≈ 0.335H），否则头会悬在身体上方。
 		_loft(torso, "RavenBody", [
-			[Vector3(0, -0.02 * H, -0.12 * H), 0.090 * H, 0.100 * H],
-			[Vector3(0, 0.06 * H, 0.04 * H), 0.110 * H, 0.115 * H],
-			[Vector3(0, 0.12 * H, 0.16 * H), 0.080 * H, 0.085 * H],
-		], "dark", 8)
+			[Vector3(0, -0.02 * H, -0.03 * H), 0.088 * H, 0.098 * H],
+			[Vector3(0, 0.08 * H, 0.02 * H), 0.114 * H, 0.122 * H],
+			[Vector3(0, 0.20 * H, 0.06 * H), 0.098 * H, 0.106 * H],
+			[Vector3(0, 0.29 * H, 0.09 * H), 0.064 * H, 0.072 * H],
+		], "dark", 9)
+		# 颈把胸腔与鸟头接起来，避免「无头躯干」。
+		_tube(torso, "RavenNeck", [
+			Vector3(0, 0.28 * H, 0.08 * H),
+			Vector3(0, 0.32 * H, 0.12 * H),
+			Vector3(0, 0.35 * H, 0.15 * H),
+		], [0.044 * H, 0.038 * H, 0.032 * H], "dark", 7)
 		for side in [-1.0, 1.0]:
 			var leg := pivots["Leg" + ("L" if side < 0.0 else "R")] as Node3D
 			leg.position = Vector3(side * 0.060 * H, -0.02 * H, 0.0)
@@ -1153,25 +1162,32 @@ class Builder extends RefCounted:
 				], [0.008 * H, 0.006 * H, 0.002 * H], "bone", 4)
 		var cloak := pivots["Cloak"] as Node3D
 		for side in [-1.0, 1.0]:
+			# 翼根挂在肩外、整体后移：否则翼片会被胸腔整块挡住，只剩单边露出。
 			_plate(cloak, "RavenWing_%d" % int(side), PackedVector2Array([
-				Vector2(0.0, 0.06 * H), Vector2(side * 0.26 * H, 0.10 * H),
-				Vector2(side * 0.44 * H, 0.02 * H), Vector2(side * 0.34 * H, -0.16 * H),
-				Vector2(side * 0.16 * H, -0.22 * H), Vector2(side * 0.04 * H, -0.10 * H),
-			]), 0.012 * H, Vector3(0, -0.03 * H, -0.02 * H), "cloth_dark")
+				Vector2(0.0, 0.07 * H), Vector2(side * 0.22 * H, 0.12 * H),
+				Vector2(side * 0.38 * H, 0.03 * H), Vector2(side * 0.33 * H, -0.14 * H),
+				Vector2(side * 0.16 * H, -0.21 * H), Vector2(side * 0.04 * H, -0.08 * H),
+			]), 0.012 * H, Vector3(0, -0.01 * H, -0.02 * H), "cloth_dark")
+			# 覆羽层压在主翼后下方，靠明度差读出羽层而不是单张胶片。
+			_plate(cloak, "RavenCover_%d" % int(side), PackedVector2Array([
+				Vector2(0.0, 0.03 * H), Vector2(side * 0.15 * H, 0.07 * H),
+				Vector2(side * 0.27 * H, 0.00 * H), Vector2(side * 0.23 * H, -0.16 * H),
+				Vector2(side * 0.09 * H, -0.15 * H), Vector2(side * 0.03 * H, -0.05 * H),
+			]), 0.008 * H, Vector3(0, -0.05 * H, -0.05 * H), "dark")
 			for feather in 3:
 				_tube(cloak, "WingBone_%d_%d" % [int(side), feather], [
-					Vector3(0, 0.05 * H, -0.03 * H),
-					Vector3(side * 0.18 * H, 0.06 * H - float(feather) * 0.05 * H, -0.04 * H),
-					Vector3(side * 0.40 * H, 0.04 * H - float(feather) * 0.10 * H, -0.05 * H),
-				], [0.010 * H, 0.007 * H, 0.003 * H], "bone", 4)
+					Vector3(0, 0.06 * H, -0.03 * H),
+					Vector3(side * 0.18 * H, 0.07 * H - float(feather) * 0.05 * H, -0.04 * H),
+					Vector3(side * 0.35 * H, 0.03 * H - float(feather) * 0.08 * H, -0.05 * H),
+				], [0.009 * H, 0.006 * H, 0.003 * H], "trim_dark", 4)
 		var head := pivots["Head"] as Node3D
-		head.position = Vector3(0.0, torso_len * 0.92, 0.16 * H)
+		head.position = Vector3(0.0, 0.34 * H, 0.15 * H)
 		_head("beak")
 		# 尾羽
 		for feather in 4:
 			_plate(hips, "TailFeather_%d" % feather, PackedVector2Array([
 				Vector2(-0.018 * H, 0.0), Vector2(0.018 * H, 0.0),
-				Vector2((float(feather) - 1.5) * 0.020 * H, -0.30 * H - float(feather % 2) * 0.06 * H),
+				Vector2((float(feather) - 1.5) * 0.026 * H, -0.20 * H - float(feather % 2) * 0.05 * H),
 			]), 0.008 * H, Vector3(0, -0.04 * H, -0.14 * H - float(feather) * 0.012 * H), "dark")
 
 	func _worm_body() -> void:
@@ -1251,10 +1267,16 @@ class Builder extends RefCounted:
 			[Vector3(0, 0.640 * H, 0.0), 0.098 * H * B, 0.086 * H * B],
 			[Vector3(0, 0.740 * H, 0.0), 0.056 * H * B, 0.052 * H * B],
 		], "metal", 14)
+		# 钟唇加厚外翻：正面读成「钟口」，而不是一枚光滑圆锥。
 		_loft(torso, "BellLip", [
-			[Vector3(0, 0.056 * H, 0.0), 0.246 * H * B, 0.212 * H * B],
-			[Vector3(0, 0.100 * H, 0.0), 0.228 * H * B, 0.198 * H * B],
-		], "trim", 14)
+			[Vector3(0, 0.046 * H, 0.0), 0.266 * H * B, 0.230 * H * B],
+			[Vector3(0, 0.068 * H, 0.0), 0.252 * H * B, 0.218 * H * B],
+			[Vector3(0, 0.092 * H, 0.0), 0.232 * H * B, 0.200 * H * B],
+		], "trim_dark", 14)
+		# 横向铸箍：贴在内壁上，把光滑锥面切成几段钟体，避免整块铜糊成一片。
+		_ring(torso, "BellBandLow", Vector3(0, 0.300 * H, 0.0), 0.196 * H * B, 0.012 * H, "trim_dark", 16)
+		_ring(torso, "BellBandMid", Vector3(0, 0.470 * H, 0.0), 0.152 * H * B, 0.010 * H, "trim_dark", 16)
+		_ring(torso, "BellBandHigh", Vector3(0, 0.620 * H, 0.0), 0.104 * H * B, 0.008 * H, "trim_dark", 14)
 		_loft(torso, "BellMouth", [
 			[Vector3(0, 0.052 * H, 0.0), 0.220 * H * B, 0.190 * H * B],
 			[Vector3(0, 0.075 * H, 0.0), 0.205 * H * B, 0.176 * H * B],
@@ -1263,11 +1285,11 @@ class Builder extends RefCounted:
 			var ang := TAU * float(i) / 5.0 + 0.3
 			_block(torso, "BellRune_%d" % i, Vector3(cos(ang) * 0.150 * H * B, 0.430 * H, sin(ang) * 0.126 * H * B), Vector3(0.018 * H, 0.052 * H, 0.014 * H), "trim_dark", Vector3(0.0, -ang, 0.0))
 		_ring(torso, "BellCrown", Vector3(0, 0.742 * H, 0.0), 0.058 * H, 0.010 * H, "trim", 12)
-		_tube(torso, "ClapperStem", [Vector3(0, 0.300 * H, 0.0), Vector3(0, 0.046 * H, 0.0)], [0.012 * H], "dark", 5)
+		_tube(torso, "ClapperStem", [Vector3(0, 0.300 * H, 0.0), Vector3(0, 0.026 * H, 0.0)], [0.012 * H], "dark", 5)
 		_loft(torso, "Clapper", [
-			[Vector3(0, 0.006 * H, 0.0), 0.020 * H, 0.020 * H],
-			[Vector3(0, 0.030 * H, 0.0), 0.038 * H, 0.038 * H],
-			[Vector3(0, 0.060 * H, 0.0), 0.024 * H, 0.024 * H],
+			[Vector3(0, -0.030 * H, 0.0), 0.020 * H, 0.020 * H],
+			[Vector3(0, -0.002 * H, 0.0), 0.040 * H, 0.040 * H],
+			[Vector3(0, 0.030 * H, 0.0), 0.026 * H, 0.026 * H],
 		], "trim", 8)
 		for side in [-1.0, 1.0]:
 			_block(torso, "BellEye_%d" % int(side), Vector3(side * 0.062 * H, 0.470 * H, 0.126 * H * B), Vector3(0.034 * H, 0.020 * H, 0.014 * H), "glow")

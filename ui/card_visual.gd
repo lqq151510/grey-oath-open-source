@@ -148,6 +148,12 @@ func _build_labels() -> void:
 	_layout_labels()
 
 
+func _ready() -> void:
+	# 尺寸由外层容器最终决定，落地后再按真实高度重排一次。
+	resized.connect(_layout_labels)
+	_layout_labels()
+
+
 func _place(node_name: String, at: Vector2, bounds: Vector2) -> void:
 	var label := get_node(node_name) as Label
 	label.position = at
@@ -155,28 +161,39 @@ func _place(node_name: String, at: Vector2, bounds: Vector2) -> void:
 
 
 func _layout_labels() -> void:
+	if get_node_or_null("Tags") == null or get_node_or_null("Description") == null:
+		return
 	var content_width := size.x - INSET * 2.0
 	var footer_top := size.y - FOOTER_HEIGHT
 	var tags := get_node("Tags") as Label
 	tags.max_lines_visible = 2 if size.y >= 260.0 else 1
+	# Label 的最小高度不可压缩，空标签也要按一行占位，否则会压到页脚文字上。
 	var tag_height := ceilf(tags.get_theme_font("font").get_height(11)) * float(tags.max_lines_visible) + 1.0
 	var tags_top := footer_top - tag_height - 3.0
 	var description := get_node("Description") as Label
+	var description_font := description.get_theme_font("font")
 	var line_spacing := float(description.get_theme_constant("line_spacing"))
-	var line_height := ceilf(description.get_theme_font("font").get_height(15)) + line_spacing
-	var preferred_lines := 3.0 if size.y >= 285.0 else 2.0
-	# Text reserves two lines even on a hand card before remaining height is allocated to art.
-	var max_art_height := tags_top - HEADER_HEIGHT - 37.0 - (line_height * preferred_lines - line_spacing)
-	var preferred_art_height := 54.0 + (size.y - 215.0) * 0.67
-	var art_height := maxf(16.0, minf(preferred_art_height, max_art_height))
+	var line_height := ceilf(description_font.get_height(15)) + line_spacing
+	# 说明按真实折行数占位：短文案不再白白让出两行，插画窗才有高度。
+	var measured := TextParagraph.new()
+	measured.break_flags = TextServer.BREAK_MANDATORY | TextServer.BREAK_WORD_BOUND | TextServer.BREAK_ADAPTIVE
+	measured.add_string(str(description.text), description_font, 15)
+	measured.width = maxf(1.0, content_width - 4.0)
+	var natural_lines := maxi(1, measured.get_line_count())
+	var description_height := line_height * float(mini(3, natural_lines)) - line_spacing + 1.0
+	# 插画窗优先贴 16:9，让 1024x576 的卡图整幅露出；不够高时才给文字让位。
+	var art_ceiling := tags_top - 30.0 - description_height - HEADER_HEIGHT
+	var preferred_art_height := (size.x - 16.0) * 0.5625
+	var art_height := minf(preferred_art_height, maxf(20.0, art_ceiling))
 	art_bounds = Rect2(Vector2(8, HEADER_HEIGHT), Vector2(maxf(1.0, size.x - 16.0), art_height))
 	_place("Cost", Vector2(10, 4), Vector2(36, 35))
 	_place("Type", Vector2(size.x - 64, 5), Vector2(51, 18))
 	_place("Rarity", Vector2(size.x - 64, 23), Vector2(51, 15))
-	_place("CardName", Vector2(INSET, art_bounds.end.y + 3.0), Vector2(content_width, 26))
-	var description_top := art_bounds.end.y + 35.0
-	var description_height := tags_top - description_top - 2.0
-	description.max_lines_visible = maxi(1, int(floor((description_height + line_spacing) / line_height)))
+	# 名字绶带压在插画底部，画面更大而标题仍清楚。
+	_place("CardName", Vector2(INSET, art_bounds.end.y - 8.0), Vector2(content_width, 26))
+	var description_top := art_bounds.end.y + 28.0
+	description_height = maxf(line_height, tags_top - description_top - 2.0)
+	description.max_lines_visible = mini(3, maxi(1, int(floor((description_height + line_spacing) / line_height))))
 	_place("Description", Vector2(INSET + 2.0, description_top), Vector2(content_width - 4.0, description_height))
 	_place("Tags", Vector2(INSET + 2.0, tags_top), Vector2(content_width - 4.0, tag_height))
 	_place("Availability", Vector2(9, footer_top + 1.0), Vector2(size.x - 18, FOOTER_HEIGHT - 5.0))

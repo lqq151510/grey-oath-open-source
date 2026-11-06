@@ -8,7 +8,7 @@
 
 ## 从源码运行
 
-项目使用 **Godot 4.7.2 stable**。在 Godot 项目管理器中导入 [project.godot](project.godot)，等待资源导入完成，再运行项目。此源码预览附带 macOS 启动脚本。它省略了待核对授权的画面、音频和模型，运行时会看到默认显示。
+项目使用 **Godot 4.7.2 stable**。在 Godot 项目管理器中导入 [project.godot](project.godot)，等待资源导入完成，再运行项目。当前仓库配有 macOS 启动脚本和导出预设。
 
 在 macOS 上也可以从项目根目录安装项目使用的编辑器，再通过启动脚本运行。
 
@@ -26,13 +26,3 @@ python3 scripts/setup_engine.py --editor-only
 ## 许可证
 
 《灰誓》贡献者有权授权的原创源代码使用 [MIT 许可证](LICENSE)，允许使用、修改和再分发，保留版权和许可声明即可。美术、音频、字体、模型和第三方内容的许可另见 [素材与第三方授权](ASSET-LICENSES.md)。
-
-## 自愿支持
-
-如果你喜欢《灰誓》，愿意的话可以自愿支持后续开发。源码与试玩均可免费获取，支持完全自愿。提出点子、反馈问题或分享项目，也都很有帮助。
-
-| 支付宝 | 微信支付 |
-| --- | --- |
-| <img src="support/alipay.jpg" alt="支付宝自愿支持收款码" width="240"> | <img src="support/wechat.png" alt="微信自愿支持收款码" width="240"> |
-
-收款码仅用于支持本项目，不属于 MIT 授权的源代码。

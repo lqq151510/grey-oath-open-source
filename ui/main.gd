@@ -11,12 +11,17 @@ const ItemIconVisual = preload("res://ui/item_icon.gd")
 const CombatActor = preload("res://ui/combat_actor.gd")
 const CombatFollower = preload("res://ui/combat_follower.gd")
 const CombatEffects = preload("res://ui/combat_effects.gd")
+const BattleFlair = preload("res://ui/battle_flair.gd")
 const AudioDirector = preload("res://ui/audio_manager.gd")
 const TitleAtmosphere = preload("res://ui/title_atmosphere.gd")
 const RoleGuide = preload("res://ui/role_guide.gd")
 const StsTargeting = preload("res://ui/sts_targeting.gd")
 const WorkshopPack = preload("res://core/workshop_pack.gd")
 const WorkshopEditor = preload("res://ui/workshop_editor.gd")
+const RewardScreen = preload("res://ui/screens/reward_screen.gd")
+const CampScreen = preload("res://ui/screens/camp_screen.gd")
+const EventScreen = preload("res://ui/screens/event_screen.gd")
+const RouteScreen = preload("res://ui/screens/route_screen.gd")
 const INK := Color("111311")
 const PAPER := Color("e8dfcc")
 const MUTED := Color("aaa99a")
@@ -166,6 +171,13 @@ var collection_owned := false
 var collection_query := ""
 var collection_page := 0
 var achievement_toast: Control
+var selected_oath := ""
+var oath_draft_seed := -1
+var oath_draft_active := false
+var oath_draft_offers: Array = []
+var oath_card_buttons: Array[Button] = []
+var oath_begin_button: Button
+var daily_error := ""
 
 
 func _ready() -> void:
@@ -270,11 +282,12 @@ func _sts_box(fill: Color, edge: Color, width: int = 1, glow: bool = false) -> S
 
 
 func _sts_actor_frame(selected: bool, dead: bool = false) -> StyleBoxFlat:
-	var fill := Color(0.075, 0.062, 0.052, 0.92) if selected else Color(0.055, 0.05, 0.043, 0.86)
-	var edge := GOLD if selected else Color(0.32, 0.28, 0.22, 0.85)
+	# 半透明格底，让下层祭坛的暖光透上来；选中只靠金边与辉光区分。
+	var fill := Color(0.075, 0.062, 0.052, 0.34) if selected else Color(0.05, 0.045, 0.04, 0.22)
+	var edge := Color(0.83, 0.70, 0.45, 0.82) if selected else Color(0.36, 0.31, 0.23, 0.55)
 	if dead:
-		fill = Color(0.04, 0.04, 0.035, 0.7)
-		edge = Color(0.24, 0.23, 0.2, 0.7)
+		fill = Color(0.04, 0.04, 0.035, 0.30)
+		edge = Color(0.24, 0.23, 0.2, 0.45)
 	return _sts_box(fill, edge, 2 if selected else 1, selected)
 
 
@@ -436,6 +449,15 @@ func _refresh() -> void:
 	var seed_error_visible := setup_open and is_instance_valid(seed_error) and seed_error.visible
 	seed_input = null
 	seed_error = null
+	oath_begin_button = null
+	if not setup_open and oath_draft_active:
+		selected_oath = ""
+		oath_draft_seed = -1
+		oath_draft_offers = []
+		oath_card_buttons = []
+		oath_draft_active = false
+	if not (menu_open and menu_page == "daily"):
+		daily_error = ""
 	_combat_generation += 1
 	_cancel_card_drag()
 	combat_busy = false
@@ -482,6 +504,8 @@ func _refresh() -> void:
 			_tutorial()
 		elif menu_page == "workshop":
 			_workshop()
+		elif menu_page == "daily":
+			_daily()
 		else:
 			_menu()
 		return
@@ -630,7 +654,7 @@ func _role_select(seed_draft: String, seed_error_visible: bool) -> void:
 		_label(profile_text, str(role.get("title", "旅者")), 13, GOLD if unlocked else MUTED)
 		_label(profile_text, str(role.name), 23, PAPER if unlocked else MUTED, true)
 		_label(profile_text, "生命 %d" % int(role.max_hp), 15, MUTED)
-		var pick := _button(role_box, "已选择" if selected else ("选择英雄" if unlocked else "%d 场战斗胜利解锁" % int(role.unlock_wins)), func():
+		var pick := _button(role_box, "已选择" if selected else ("选择旅者" if unlocked else "%d 场战斗胜利解锁" % int(role.unlock_wins)), func():
 			selected_role = role_id
 			selected_build_plan = ""
 			difficulty = 0
@@ -684,20 +708,32 @@ func _role_select(seed_draft: String, seed_error_visible: bool) -> void:
 	seed_input.custom_minimum_size = Vector2(220, 44)
 	seed_input.max_length = 10
 	seed_input.text = seed_draft
+	seed_input.tooltip_text = "留空时用本次灰誓草稿种子：地图与三张誓约都由它决定。"
 	options.add_child(seed_input)
 	_spacer(options)
-	var begin := _button(options, "立下灰誓  →", _begin_run, true)
-	begin.name = "BeginJourney"
-	begin.disabled = bool(game.state.active)
 	if game.state.active:
 		_button(options, "继续旅程", func():
 			menu_open = false
 			_refresh(), true)
 		_button(options, "结束当前旅程", _confirm_abandon)
+	_oath_draft_panel(setup)
+	var begin_row := HBoxContainer.new()
+	begin_row.add_theme_constant_override("separation", 10)
+	setup.add_child(begin_row)
+	_spacer(begin_row)
+	var begin := _button(begin_row, _begin_run_caption(), _begin_run, true)
+	begin.name = "BeginJourney"
+	begin.custom_minimum_size.x = 252
+	begin.disabled = bool(game.state.active)
+	begin.tooltip_text = _begin_run_hint()
+	oath_begin_button = begin
 	seed_error = _paragraph(setup, "种子需要是 0 至 2147483647 的整数。", 16, RED)
 	seed_error.name = "JourneySeedError"
 	seed_error.visible = seed_error_visible
-	seed_input.text_changed.connect(func(_text: String): seed_error.hide())
+	seed_input.text_changed.connect(func(_text: String):
+		seed_error.hide()
+		_refresh_oath_draft())
+	_refresh_oath_draft()
 	_footer()
 
 
@@ -714,6 +750,133 @@ func _difficulty_description(level: int) -> String:
 	return "进阶效果逐级叠加。" + description if level > 0 else description
 
 
+func _oath_draft_panel(parent: Node) -> VBoxContainer:
+	var panel := _panel(parent, Color(0.072, 0.078, 0.062, 0.95), Color(0.40, 0.35, 0.24, 0.75))
+	panel.get_parent().name = "OathDraft"
+	var head := HBoxContainer.new()
+	head.add_theme_constant_override("separation", 10)
+	panel.add_child(head)
+	var mark := _label(head, _spaced("灰誓"), 12, GOLD)
+	mark.add_theme_constant_override("outline_size", 0)
+	var hint := _paragraph(head, "三张誓约由本次种子决定；选中一条带入整局，也可以不立誓。", 13, MUTED)
+	hint.add_theme_constant_override("outline_size", 0)
+	var skip := _button(head, "不立誓", _skip_oath)
+	skip.name = "SkipOathButton"
+	skip.custom_minimum_size = Vector2(96, 30)
+	skip.add_theme_font_size_override("font_size", 13)
+	var cards := HBoxContainer.new()
+	cards.name = "OathCards"
+	cards.add_theme_constant_override("separation", 10)
+	panel.add_child(cards)
+	oath_card_buttons.clear()
+	for index in range(3):
+		var card := Button.new()
+		card.name = "OathCard_%d" % index
+		card.custom_minimum_size = Vector2(0, 92)
+		card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		card.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		card.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		card.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		card.add_theme_font_size_override("font_size", 12)
+		card.pressed.connect(_toggle_oath.bind(index))
+		cards.add_child(card)
+		oath_card_buttons.append(card)
+	if oath_draft_seed < 0:
+		oath_draft_seed = randi_range(0, 2147483647)
+	oath_draft_active = true
+	_refresh_oath_draft()
+	return panel
+
+
+func _oath_seed_value() -> int:
+	var raw := seed_input.text.strip_edges() if is_instance_valid(seed_input) else ""
+	if not raw.is_empty() and raw.is_valid_int():
+		var parsed := int(raw)
+		if parsed >= 0 and parsed <= 2147483647:
+			return parsed
+	return maxi(0, oath_draft_seed)
+
+
+func _refresh_oath_draft() -> void:
+	if oath_card_buttons.is_empty() or not is_instance_valid(oath_card_buttons[0]):
+		return
+	oath_draft_offers = game.oath_offers(_oath_seed_value())
+	while oath_draft_offers.size() < 3:
+		oath_draft_offers.append({})
+	if not selected_oath.is_empty() and not oath_draft_offers.any(func(entry): return str(entry.get("id", "")) == selected_oath):
+		selected_oath = ""
+	for index in range(oath_card_buttons.size()):
+		var card := oath_card_buttons[index]
+		if not is_instance_valid(card):
+			continue
+		var entry: Dictionary = oath_draft_offers[index]
+		_paint_oath_card(card, entry, not entry.is_empty() and str(entry.get("id", "")) == selected_oath)
+	if is_instance_valid(oath_begin_button):
+		oath_begin_button.text = _begin_run_caption()
+		oath_begin_button.tooltip_text = _begin_run_hint()
+
+
+func _paint_oath_card(card: Button, entry: Dictionary, picked: bool) -> void:
+	if entry.is_empty():
+		card.text = "誓约尚未显形"
+		card.disabled = true
+		return
+	card.disabled = false
+	var oath_name := str(entry.get("name", "誓约"))
+	var kicker := str(entry.get("kicker", ""))
+	card.text = "%s%s · %s\n恩惠：%s\n代价：%s\n%s" % [
+		"◆ " if picked else "",
+		oath_name,
+		kicker,
+		str(entry.get("boon", "")),
+		str(entry.get("price", "")),
+		"已立下此誓 · 再点一次撤销" if picked else "点一下立下这条誓约",
+	]
+	var fill := Color(0.158, 0.126, 0.082, 0.98) if picked else Color(0.088, 0.083, 0.068, 0.95)
+	var edge := GOLD if picked else Color(0.34, 0.30, 0.23, 0.85)
+	for state_name in ["normal", "hover", "pressed", "focus"]:
+		card.add_theme_stylebox_override(state_name, _sts_box(fill, edge, 2 if picked else 1, picked))
+	card.add_theme_color_override("font_color", PAPER if picked else Color("cfc4ae"))
+	card.add_theme_color_override("font_hover_color", Color("f3e7cd"))
+	card.tooltip_text = "%s · %s\n恩惠：%s\n代价：%s" % [oath_name, kicker, str(entry.get("boon", "")), str(entry.get("price", ""))]
+
+
+func _toggle_oath(index: int) -> void:
+	if index < 0 or index >= oath_draft_offers.size():
+		return
+	var entry: Dictionary = oath_draft_offers[index]
+	if entry.is_empty():
+		return
+	var oath_id := str(entry.get("id", ""))
+	selected_oath = "" if selected_oath == oath_id else oath_id
+	_refresh_oath_draft()
+
+
+func _skip_oath() -> void:
+	selected_oath = ""
+	_refresh_oath_draft()
+
+
+func _begin_run_caption() -> String:
+	var oath: Dictionary = game.oath_view(selected_oath)
+	if oath.is_empty():
+		return "立下灰誓  →"
+	return "立下灰誓 · %s  →" % str(oath.get("name", "誓约"))
+
+
+func _begin_run_hint() -> String:
+	var lines: Array[String] = []
+	var oath: Dictionary = game.oath_view(selected_oath)
+	if not oath.is_empty():
+		lines.append("已选 %s：%s" % [str(oath.get("name", "")), str(oath.get("boon", ""))])
+		lines.append("代价：%s" % str(oath.get("price", "")))
+	if oath_draft_seed >= 0:
+		lines.append("草稿种子 %d：种子留空时用它决定地图与誓约。" % oath_draft_seed)
+	if lines.is_empty():
+		return "选择一条誓约，或直接出发。"
+	return "\n".join(lines)
+
+
 func _begin_run() -> void:
 	var seed_value := -1
 	var raw := seed_input.text.strip_edges() if is_instance_valid(seed_input) else ""
@@ -723,7 +886,9 @@ func _begin_run() -> void:
 			seed_input.grab_focus()
 			return
 		seed_value = int(raw)
-	var result: Dictionary = game.new_run(selected_role, seed_value, difficulty, selected_build_plan)
+	elif oath_draft_seed >= 0:
+		seed_value = oath_draft_seed
+	var result: Dictionary = game.new_run(selected_role, seed_value, difficulty, selected_build_plan, selected_oath)
 	if result.get("ok", false):
 		menu_open = false
 		selected_target = 0
@@ -744,8 +909,21 @@ func _hud() -> void:
 	row.add_child(crest)
 	var brand := _label(crest, "灰 誓", 23, GOLD, true)
 	brand.add_theme_constant_override("outline_size", 0)
-	var role_caption := _label(crest, str(game.role_data(str(game.state.role)).get("name", "旅者")), 12, Color("9a8f79"))
+	var crest_line := HBoxContainer.new()
+	crest_line.add_theme_constant_override("separation", 5)
+	crest.add_child(crest_line)
+	var role_caption := _label(crest_line, str(game.role_data(str(game.state.role)).get("name", "旅者")), 12, Color("9a8f79"))
 	role_caption.add_theme_constant_override("outline_size", 0)
+	var oath: Dictionary = game.current_oath()
+	if not oath.is_empty():
+		var oath_chip := _chip(crest_line, str(oath.get("name", "誓约")), GOLD)
+		oath_chip.name = "OathChip"
+		oath_chip.get_parent().tooltip_text = "%s · %s\n恩惠：%s\n代价：%s" % [str(oath.get("name", "")), str(oath.get("kicker", "")), str(oath.get("boon", "")), str(oath.get("price", ""))]
+	if bool(game.state.get("daily", false)):
+		var daily_modifier := _daily_modifier_name(str(game.state.get("daily_modifier", "")))
+		var daily_chip := _chip(crest_line, "每日 · %s" % daily_modifier, Color("9fb6c8"))
+		daily_chip.name = "DailyChip"
+		daily_chip.get_parent().tooltip_text = "每日誓约 · %s\n今日与所有旅者共享同一场考验。" % daily_modifier
 	var health := VBoxContainer.new()
 	health.custom_minimum_size.x = 236
 	health.add_theme_constant_override("separation", 1)
@@ -848,16 +1026,26 @@ func _health_bar(parent: Node, hp: int, max_hp: int, color: Color) -> ProgressBa
 	if hp > 0 and float(hp) / float(maxi(1, max_hp)) <= 0.3:
 		color = color.lightened(0.16)
 	var track := StyleBoxFlat.new()
-	track.bg_color = Color("1c1916")
+	track.bg_color = Color("16130f")
 	track.border_color = Color("3c362e")
 	track.set_border_width_all(1)
 	track.set_corner_radius_all(2)
+	track.shadow_color = Color(0, 0, 0, 0.45)
+	track.shadow_size = 2
+	track.shadow_offset = Vector2(0, 1)
 	var fill := StyleBoxFlat.new()
 	fill.bg_color = color
 	fill.set_corner_radius_all(2)
 	bar.add_theme_stylebox_override("background", track)
 	bar.add_theme_stylebox_override("fill", fill)
 	parent.add_child(bar)
+	# 血条叠加层：受光、刻度、右端亮边、低血脉冲（也压在血量文字下面）。
+	var vitals := BattleFlair.VitalOverlay.new()
+	vitals.name = "VitalOverlay"
+	vitals.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	bar.add_child(vitals)
+	vitals.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	vitals.bind(bar, color)
 	return bar
 
 
@@ -867,185 +1055,35 @@ func _chapter() -> Dictionary:
 
 
 func _map() -> void:
-	var columns := HBoxContainer.new()
-	columns.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	columns.add_theme_constant_override("separation", 18)
-	body.add_child(columns)
-	var chronicle := PanelContainer.new()
-	chronicle.name = "MapChronicle"
-	chronicle.custom_minimum_size.x = 320
-	chronicle.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	chronicle.add_theme_stylebox_override("panel", _sts_box(Color(0.062, 0.055, 0.045, 0.92), Color(0.46, 0.37, 0.23, 0.55), 1))
-	columns.add_child(chronicle)
-	var chronicle_margin := MarginContainer.new()
-	chronicle_margin.add_theme_constant_override("margin_left", 20)
-	chronicle_margin.add_theme_constant_override("margin_right", 20)
-	chronicle_margin.add_theme_constant_override("margin_top", 18)
-	chronicle_margin.add_theme_constant_override("margin_bottom", 16)
-	chronicle.add_child(chronicle_margin)
-	var introduction := VBoxContainer.new()
-	introduction.add_theme_constant_override("separation", 9)
-	chronicle_margin.add_child(introduction)
-	_label(introduction, _spaced("第 %d 章 / 四重长夜" % (int(game.state.chapter) + 1)), 12, GOLD)
-	_label(introduction, str(_chapter().get("name", "长夜")), 30, PAPER, true)
-	_paragraph(introduction, "由下向上，沿连线穿过 %d 层长夜。\n每次选择一处亮金节点，路线随之确定。" % game.state.map.size(), 15)
-	introduction.add_child(_room_rule())
-	_label(introduction, "下一步 · 第 %d 层" % (int(game.state.row) + 2), 21, GOLD, true)
-	_label(introduction, "历练 %d · 战斗胜利 %d / 4" % [int(game.state.get("growth_level", 0)), int(game.state.get("growth_wins", 0)) % 4], 15, GOLD)
-	_paragraph(introduction, "精英更凶险；营火可休整。\n商店需金币，当前携带 %d。\n问号进入后揭晓，命运需要抉择。" % int(game.state.gold), 15)
-	var inspect := _paragraph(introduction, "悬停节点，预览从它出发的后续分支。\n预览不会移动角色。", 15, PAPER)
-	inspect.name = "MapPreviewInfo"
-	inspect.custom_minimum_size.y = 96
-	_spacer(introduction, true)
-	_label(introduction, _spaced("路 标"), 14, GOLD, true)
-	var legend := GridContainer.new()
-	legend.name = "MapLegend"
-	legend.columns = 2
-	legend.add_theme_constant_override("h_separation", 6)
-	legend.add_theme_constant_override("v_separation", 0)
-	introduction.add_child(legend)
-	for kind in ["normal", "elite", "treasure", "shop", "unknown", "fate", "rest", "boss"]:
-		var marker = MapNodeVisual.new()
-		marker.legend_mode = true
-		marker.custom_minimum_size = Vector2(140, 34)
-		marker.configure(kind, str(KIND_NAMES[kind]))
-		marker.tooltip_text = _map_kind_hint(kind)
-		legend.add_child(marker)
-	_paragraph(introduction, "金线：已走 / 可走　绿线：悬停预览\n双环：当前位置　虚线：未来分支", 12)
-	_label(introduction, "旅程种子  %d" % int(game.state.seed), 12, MUTED)
-	var map_frame := PanelContainer.new()
-	map_frame.name = "MapFrame"
-	map_frame.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	map_frame.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	map_frame.add_theme_stylebox_override("panel", _sts_box(Color(0.030, 0.027, 0.023, 0.97), Color(0.46, 0.37, 0.23, 0.55), 1))
-	columns.add_child(map_frame)
-	var holder := Control.new()
-	holder.name = "MapHolder"
-	holder.custom_minimum_size = Vector2(560, 560)
-	holder.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	holder.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	map_frame.add_child(holder)
-	holder.add_child(MapBackdrop.new())
-	var map_surface := Control.new()
-	map_surface.name = "MapSurface"
-	map_surface.custom_minimum_size = Vector2(550, 570)
-	map_surface.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	map_surface.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	var map_scroll := ScrollContainer.new()
-	map_scroll.name = "MapScroll"
-	map_scroll.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	map_scroll.offset_left = 8
-	map_scroll.offset_right = -8
-	map_scroll.offset_top = 6
-	map_scroll.offset_bottom = -6
-	map_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	map_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	map_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	holder.add_child(map_scroll)
-	map_surface.custom_minimum_size.y = maxf(570, 78 + (game.state.map.size() - 1) * 57)
-	map_scroll.add_child(map_surface)
-	map_scroll.set_deferred("scroll_vertical", maxi(0, int(map_surface.custom_minimum_size.y - (int(game.state.row) + 1) * 57 - 420)))
-	var lines = RoutePaths.new()
-	lines.name = "MapPaths"
-	lines.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	lines.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	lines.current_row = int(game.state.row)
-	lines.current_lane = int(game.state.lane)
-	map_surface.add_child(lines)
-	var available: Array = game.available_nodes()
-	var all_nodes: Array = []
-	var layer_labels: Array = []
-	for row_index in range(game.state.map.size()):
-		var layer := _label(map_surface, "%02d" % (row_index + 1), 13, MUTED)
-		layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		layer_labels.append(layer)
-		var buttons: Array = []
-		var row_exits: Array = []
-		var row_visited: Array = []
-		for lane in range(3):
-			var node: Dictionary = game.state.map[row_index][lane]
-			var active: bool = row_index == int(game.state.row) + 1 and available.has(lane)
-			var visited: bool = node.get("cleared", false)
-			var current: bool = row_index == int(game.state.row) and lane == int(game.state.lane)
-			var kind := _map_display_kind(node)
-			var button = MapNodeVisual.new()
-			button.name = "MapNode_%d_%d" % [row_index, lane]
-			button.configure(kind, str(KIND_NAMES.get(kind, kind)), active, visited, current)
-			button.tooltip_text = "第 %d 层 · %s\n%s\n%s" % [row_index + 1, KIND_NAMES.get(kind, kind), _map_kind_hint(kind), "当前位置" if current else ("已走过" if visited else ("点击前往" if active else "仅预览，当前不可前往"))]
-			button.pressed.connect(func(): _sfx("click", 0.02, -14.0))
-			button.pressed.connect(_enter_node.bind(lane))
-			button.mouse_entered.connect(_map_preview.bind(row_index, lane, node, lines, inspect))
-			button.mouse_exited.connect(func():
-				lines.clear_preview()
-				inspect.text = "悬停节点，预览从它出发的后续分支。\n预览不会移动角色。")
-			map_surface.add_child(button)
-			buttons.append(button)
-			row_exits.append(game.route_exits(row_index, lane))
-			row_visited.append(visited or current)
-		all_nodes.append(buttons)
-		lines.exits.append(row_exits)
-		lines.visited.append(row_visited)
-	lines.nodes = all_nodes
-	map_surface.resized.connect(_layout_map.bind(map_surface, all_nodes, layer_labels, lines))
-	_layout_map(map_surface, all_nodes, layer_labels, lines)
+	RouteScreen.build(self)
 
 
 func _layout_map(surface: Control, nodes: Array, labels: Array, lines: Control) -> void:
-	if not is_instance_valid(surface):
-		return
-	var top := 28.0
-	var bottom := maxf(top + maxf(0, nodes.size() - 1) * 57.0, surface.size.y - 48.0)
-	for row in range(nodes.size()):
-		var y := lerpf(bottom, top, float(row) / maxf(1, nodes.size() - 1))
-		labels[row].position = Vector2(8, y - 10)
-		for lane in range(nodes[row].size()):
-			var marker: Control = nodes[row][lane]
-			var jitter := sin(float(row * 7 + lane * 11)) * 18.0
-			var x := 64.0 + (surface.size.x - 108.0) * (0.12 + lane * 0.38) + jitter
-			marker.size = Vector2(96, 54)
-			marker.position = Vector2(x - 48, y - 21)
-	lines.queue_redraw()
+	RouteScreen._layout_map(self, surface, nodes, labels, lines)
 
 
 func _map_display_kind(node: Dictionary) -> String:
-	var kind := str(node.get("kind", "normal"))
-	if kind == "unknown" and bool(node.get("cleared", false)):
-		return str(node.get("resolved_kind", "unknown"))
-	return kind
+	return RouteScreen._map_display_kind(self, node)
 
 
 func _map_kind_hint(kind: String) -> String:
-	return str({
-		"normal": "普通敌群，战胜后获得奖励。",
-		"elite": "强敌守路，准备好生命和牌组再挑战。",
-		"treasure": "发现遗宝，领取后继续旅程。",
-		"shop": "分区购买卡牌、正面道具与补给，也可移除卡牌。",
-		"unknown": "进入后随机揭晓战斗、精英、奇遇、宝箱、商店或营地。",
-		"event": "命运抉择：阅读代价，再作选择。",
-		"fate": "命运抉择：阅读代价，再作选择。",
-		"rest": "回满生命、强化一张牌，或花5生命舍弃一件负面道具。",
-		"boss": "本章最终守关者。做好准备，直面首领。"
-	}.get(kind, "沿连线继续旅程。"))
+	return RouteScreen._map_kind_hint(self, kind)
 
 
 func _map_preview(row: int, lane: int, node: Dictionary, lines: Control, inspect: Label) -> void:
-	var count: int = lines.preview_from(row, lane)
-	var kind := _map_display_kind(node)
-	var name_text := str(KIND_NAMES.get(kind, kind))
-	if str(node.get("kind", "")) == "unknown" and bool(node.get("cleared", false)):
-		name_text = "问号 → " + name_text
-	inspect.text = "第 %d 层 · %s\n%s\n%s" % [row + 1, name_text, _map_kind_hint(kind), "本章路线终点。" if row == game.state.map.size() - 1 else "后续 %d 处节点可达，绿线显示分支。" % count]
+	RouteScreen._map_preview(self, row, lane, node, lines, inspect)
 
 
 func _enter_node(lane: int) -> void:
-	selected_target = 0
-	var result: Dictionary = game.enter_node(lane)
-	_accept(result)
-	if result.get("ok", false) and game.state.room == "battle":
-		var draws: Array = []
-		for index in game.state.hand.size():
-			draws.append({"hand_index": index, "card": game.state.hand[index].duplicate(true)})
-		_animate_draws(draws, true)
+	RouteScreen._enter_node(self, lane)
+
+
+func _new_map_backdrop() -> Control:
+	return MapBackdrop.new()
+
+
+func _new_campfire_art() -> Control:
+	return CampfireArt.new()
 
 
 func _battle() -> void:
@@ -1082,6 +1120,23 @@ func _battle() -> void:
 			tool_button.add_theme_font_size_override("font_size", 13)
 	var turn_badge := _label(context, "回合 %02d" % int(game.state.turn), 14, Color("a8916b"))
 	turn_badge.add_theme_constant_override("outline_size", 0)
+	var affix: Dictionary = game.elite_affix_view()
+	if not affix.is_empty():
+		var banner := PanelContainer.new()
+		banner.name = "EliteAffixBanner"
+		banner.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		banner.add_theme_stylebox_override("panel", _sts_box(Color(0.105, 0.058, 0.05, 0.92), Color(0.66, 0.40, 0.30, 0.85), 1))
+		body.add_child(banner)
+		var affix_row := HBoxContainer.new()
+		affix_row.add_theme_constant_override("separation", 10)
+		banner.add_child(affix_row)
+		var affix_tag := _label(affix_row, "◆ 精英词缀", 12, Color("c07a63"))
+		affix_tag.add_theme_constant_override("outline_size", 0)
+		affix_tag.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		_label(affix_row, str(affix.get("name", "无名词缀")), 15, Color("e2b78c"), true)
+		var affix_copy := _paragraph(affix_row, str(affix.get("description", "")), 14, Color("c9bda6"))
+		affix_copy.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		banner.tooltip_text = "精英词缀只作用于这具精英本体，击败后消失。"
 	var arena := PanelContainer.new()
 	arena.name = "BattleArena"
 	arena.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -1113,8 +1168,14 @@ func _battle() -> void:
 	var player_frame := PanelContainer.new()
 	player_frame.name = "PlayerFrame"
 	player_frame.custom_minimum_size = Vector2(296, 196)
-	player_frame.add_theme_stylebox_override("panel", _sts_box(Color(0.07, 0.06, 0.05, 0.55), Color(0.38, 0.32, 0.22, 0.75), 1))
+	player_frame.add_theme_stylebox_override("panel", _sts_box(Color(0.07, 0.06, 0.05, 0.16), Color(0.80, 0.67, 0.42, 0.72), 1))
 	player_column.add_child(player_frame)
+	var player_altar := BattleFlair.Altar.new()
+	player_altar.name = "PlayerAltar"
+	player_altar.accent = GOLD
+	player_altar.selected = true
+	player_frame.add_child(player_altar)
+	player_altar.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	var player_actor := _new_actor()
 	player_actor.name = "PlayerActor"
 	player_actor.custom_minimum_size = Vector2(272, 190)
@@ -1404,13 +1465,22 @@ func _enemy(parent: Node, index: int) -> void:
 	else:
 		badge.add_theme_stylebox_override("panel", _sts_box(Color(0.10, 0.10, 0.09, 0.7), Color("3a3630"), 1))
 	column.add_child(badge)
+	# 图标 + 文字的横排：意图类型一眼可辨，文字仍是测试与提示的锚点。
+	var intent_row := HBoxContainer.new()
+	intent_row.name = "EnemyIntentRow_%d" % index
+	intent_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	intent_row.add_theme_constant_override("separation", 6)
+	badge.add_child(intent_row)
 	var intent_text := "已倒下"
 	if alive:
-		intent_text = ("▸ " if threatening else "◇ ") + str(enemy.intent)
-	var intent := _label(badge, intent_text, 15, Color("e7b7a0") if threatening else Color("c9c3a6"), threatening)
+		intent_text = str(enemy.intent).replace("▸ ", "").replace("◇ ", "")
+		var glyph := BattleFlair.IntentGlyph.new()
+		glyph.setup(intent_text, threatening)
+		intent_row.add_child(glyph)
+	var intent := _label(intent_row, intent_text, 15, Color("e7b7a0") if threatening else Color("c9c3a6"), threatening)
 	intent.name = "EnemyIntent_%d" % index
 	intent.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	intent.custom_minimum_size.x = 208
+	intent.custom_minimum_size.x = 174
 	intent.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	intent.add_theme_constant_override("outline_size", 0)
 	if not mechanic_hint.is_empty() and alive:
@@ -1424,6 +1494,13 @@ func _enemy(parent: Node, index: int) -> void:
 	target.custom_minimum_size.y = 178
 	for state_name in ["normal", "hover", "pressed", "disabled", "focus"]:
 		target.add_theme_stylebox_override(state_name, _sts_actor_frame(selected, not alive))
+	var altar := BattleFlair.Altar.new()
+	altar.name = "EnemyAltar_%d" % index
+	altar.accent = GOLD
+	altar.selected = selected
+	altar.dead = not alive
+	target.add_child(altar)
+	altar.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	var actor := _new_actor()
 	actor.name = "EnemyActor_%d" % index
 	target.add_child(actor)
@@ -1463,7 +1540,7 @@ func _enemy(parent: Node, index: int) -> void:
 	_add_enemy_detail_button(status, index, definition)
 
 
-func _add_enemy_detail_button(strip: Label, index: int, definition: Dictionary) -> void:
+func _add_enemy_detail_button(strip: Control, index: int, definition: Dictionary) -> void:
 	var button := Button.new()
 	button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	button.focus_mode = Control.FOCUS_NONE
@@ -2596,417 +2673,47 @@ func _wide_button(parent: Node, text_value: String, callback: Callable, width: f
 
 
 func _reward() -> void:
-	var wallet := HBoxContainer.new()
-	wallet.add_theme_constant_override("separation", 16)
-	_label(wallet, "◈ %d" % int(game.state.gold), 18, GOLD)
-	_label(wallet, "第 %d 层" % (int(game.state.row) + 1), 15, MUTED)
-	var shell := _room_shell("余烬未熄", "将新的力量带入长夜", "选一张卡加入牌组，也可以跳过。每张候选卡都能免费换一次；金币和遗物已经结算。", wallet)
-	_build_plan_picker(shell, str(game.state.role), str(game.state.get("build_plan", "")), func(id: String): _accept(game.set_build_plan(id)))
-	var scroll := ScrollContainer.new()
-	scroll.name = "RewardScroll"
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	shell.add_child(scroll)
-	var cards := HBoxContainer.new()
-	cards.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	cards.alignment = BoxContainer.ALIGNMENT_CENTER
-	cards.add_theme_constant_override("separation", 24)
-	scroll.add_child(cards)
-	var recommendations: Array = []
-	var best_score := -1
-	var best_index := -1
-	for instance in game.state.rewards:
-		var entry: Dictionary = game.build_recommendation(instance)
-		recommendations.append(entry)
-		if int(entry.score) > best_score:
-			best_score = int(entry.score)
-			best_index = recommendations.size() - 1
-	for index in range(game.state.rewards.size()):
-		var column := VBoxContainer.new()
-		column.name = "RewardColumn_%d" % index
-		column.custom_minimum_size.x = 272
-		column.add_theme_constant_override("separation", 4)
-		cards.add_child(column)
-		var entry: Dictionary = recommendations[index]
-		var preferred := index == best_index and best_score > 0
-		var preferred_text := "优先推荐 · 核心牌" if entry.tier == "core" else "可以考虑 · 辅助牌"
-		var badge := _label(column, preferred_text if preferred else str(entry.label), 14, GOLD if entry.tier == "core" else GREEN if entry.tier == "support" else MUTED)
-		badge.name = "RewardRecommendation_%d" % index
-		badge.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		badge.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-		var frame := PanelContainer.new()
-		frame.name = "RewardCardFrame_%d" % index
-		frame.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-		var outline := _sts_box(Color.TRANSPARENT, Color.TRANSPARENT, 0)
-		if entry.tier == "core":
-			outline = _sts_box(Color(0.78, 0.65, 0.42, 0.14), GOLD, 3, true)
-		frame.add_theme_stylebox_override("panel", outline)
-		var pad := MarginContainer.new()
-		pad.add_theme_constant_override("margin_left", 6)
-		pad.add_theme_constant_override("margin_right", 6)
-		pad.add_theme_constant_override("margin_top", 6)
-		pad.add_theme_constant_override("margin_bottom", 6)
-		frame.add_child(pad)
-		var pick := _card(pad, game.state.rewards[index], func(): _accept(game.choose_reward(index)), Vector2(246, 276), "reward")
-		pick.name = "RewardCard_%d" % index
-		pick.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-		column.add_child(frame)
-		var reason := _paragraph(column, str(entry.reason), 15, PAPER)
-		reason.name = "RewardReason_%d" % index
-		reason.custom_minimum_size = Vector2(272, 44)
-		reason.max_lines_visible = 2
-		reason.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-		reason.tooltip_text = str(entry.reason)
-		if not str(game.state.get("build_plan", "")).is_empty():
-			reason.tooltip_text += "\n牌组里已有%d张适合这个方向的牌；这张卡已有%d张。" % [int(entry.core_count), int(entry.owned)]
-		var refresh: Dictionary = game.reward_reroll_view(index)
-		var refresh_text := "已换过" if refresh.used else "换掉这张 · 免费一次"
-		if not refresh.available and not refresh.used:
-			refresh_text = "暂无可替换卡牌"
-		var reroll := _button(column, refresh_text, func(): _accept(game.reroll_reward(index)))
-		reroll.name = "RewardReroll_%d" % index
-		reroll.custom_minimum_size.y = 34
-		reroll.add_theme_stylebox_override("normal", _sts_box(Color(0.10, 0.088, 0.070, 0.92), Color(0.42, 0.34, 0.22, 0.75), 1))
-		reroll.add_theme_stylebox_override("hover", _sts_box(Color(0.16, 0.13, 0.095, 0.98), GOLD, 1))
-		reroll.disabled = not refresh.available
-		reroll.tooltip_text = str(refresh.reason) if not refresh.available else "只换这张卡；本次奖励中出现过的卡不会重复。"
-	var controls := HBoxContainer.new()
-	controls.alignment = BoxContainer.ALIGNMENT_CENTER
-	shell.add_child(controls)
-	_wide_button(controls, "跳过卡牌，继续前行  →", func(): _accept(game.choose_reward(-1))).name = "SkipCardReward"
+	RewardScreen.build(self)
 
 
 func _shop() -> void:
-	var wallet := HBoxContainer.new()
-	wallet.add_theme_constant_override("separation", 16)
-	_label(wallet, "◈ %d" % int(game.state.gold), 18, GOLD)
-	_label(wallet, "第 %d 层" % (int(game.state.row) + 1), 15, MUTED)
-	var shell := _room_shell("路边行商", "以余财换取生机", "卡牌与正面道具分区陈列，离开后无法返回当前行商。", wallet)
-	var shortcuts := HBoxContainer.new()
-	shortcuts.add_theme_constant_override("separation", 10)
-	shell.add_child(shortcuts)
-	var scroll := ScrollContainer.new()
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	shell.add_child(scroll)
-	var sections := VBoxContainer.new()
-	sections.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	sections.add_theme_constant_override("separation", 14)
-	scroll.add_child(sections)
-	for section in [["卡牌", "ShopCards", ["card"]], ["正面道具", "ShopPositiveItems", ["item", "relic"]], ["补给与服务", "ShopSupplies", ["potion", "remove"]]]:
-		var heading_row := HBoxContainer.new()
-		heading_row.add_theme_constant_override("separation", 12)
-		sections.add_child(heading_row)
-		var heading := _label(heading_row, str(section[0]), 24, GOLD, true)
-		_spacer(heading_row, false)
-		var heading_rule := _room_rule(Color(0.46, 0.37, 0.23, 0.28))
-		heading_rule.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		heading_row.add_child(heading_rule)
-		var jump := _button(shortcuts, str(section[0]), func(): scroll.scroll_vertical = roundi(heading.position.y))
-		jump.name = str(section[1]) + "Jump"
-		jump.custom_minimum_size = Vector2(112, 34)
-		jump.add_theme_stylebox_override("normal", _sts_box(Color(0.10, 0.088, 0.070, 0.92), Color(0.44, 0.36, 0.23, 0.8), 1))
-		jump.add_theme_stylebox_override("hover", _sts_box(Color(0.17, 0.14, 0.105, 0.98), GOLD, 1))
-		jump.add_theme_color_override("font_color", GOLD)
-		jump.add_theme_color_override("font_hover_color", PAPER)
-		var grid := GridContainer.new()
-		grid.name = str(section[1])
-		grid.columns = 4 if grid.name == "ShopCards" else 3
-		grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		grid.add_theme_constant_override("h_separation", 16)
-		grid.add_theme_constant_override("v_separation", 10)
-		sections.add_child(grid)
-		for index in range(game.state.shop.size()):
-			if game.state.shop[index].kind in section[2]:
-				_shop_product(grid, index)
-		if grid.get_child_count() == 0:
-			_label(grid, "本次没有可售商品。", 16, MUTED)
-	var controls := HBoxContainer.new()
-	controls.alignment = BoxContainer.ALIGNMENT_CENTER
-	shell.add_child(controls)
-	_wide_button(controls, "离开行商  →", func(): _accept(game.leave_room()))
+	CampScreen.build_shop(self)
 
 
 func _shop_product(parent: Control, index: int) -> void:
-	var item: Dictionary = game.state.shop[index]
-	var definition: Dictionary = {}
-	match str(item.kind):
-		"item": definition = game.item_data(str(item.id))
-		"relic": definition = game.relic_data(str(item.id))
-		"potion": definition = game.potion_data(str(item.id))
-		"remove": definition = {"name":"遗忘一张卡牌", "description":"选定卡牌后才扣款，牌组至少保留五张。"}
-	var box := _panel(parent)
-	box.get_parent().size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var can_buy := not bool(item.sold) and int(game.state.gold) >= int(item.price)
-	var price_label := "购买 · %d 金币" % int(item.price)
-	if item.kind == "card":
-		var instance := {"id": str(item.id), "upgraded": false}
-		var inspect := func():
-			var card: Dictionary = game.card_view(instance)
-			_confirm(str(card.get("name", "卡牌")), _wrap_tooltip(str(card.get("description", ""))), func(): pass, "知道了")
-		var preview := _card(box, instance, inspect, Vector2(218, 270))
-		preview.name = "ShopCard_%d" % index
-		if not can_buy:
-			price_label = "金币不足 · 需 %d 金币" % int(item.price)
-	else:
-		box.get_parent().custom_minimum_size = Vector2(290, 168)
-		var header := HBoxContainer.new()
-		header.add_theme_constant_override("separation", 10)
-		box.add_child(header)
-		if item.kind != "remove":
-			_add_item_icon(header, definition, str(item.kind), 52.0)
-		var product_copy := VBoxContainer.new()
-		product_copy.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		header.add_child(product_copy)
-		_label(product_copy, str(definition.get("name", "商品")), 21, PAPER, true)
-		_paragraph(box, str(definition.get("description", "")), 17)
-	_spacer(box, true)
-	var buy := _button(box, "已售出" if item.sold else price_label, _buy.bind(index))
-	buy.name = "ShopBuy_%d" % index
-	buy.disabled = not can_buy
+	CampScreen._shop_product(self, parent, index)
 
 
 func _buy(index: int) -> void:
-	var result: Dictionary = game.buy_item(index)
-	_accept(result)
-	if result.get("ok", false) and game.state.shop[index].kind == "remove":
-		_show_deck("remove")
+	CampScreen._buy(self, index)
 
 
 func _rest() -> void:
-	var fire := CampfireArt.new()
-	fire.name = "CampfireArt"
-	var shell := _room_shell("短暂的暖意", "营火仍在燃烧", "歇息、淬炼、舍弃，三选一。做出选择后继续旅程。", fire)
-	_spacer(shell, true)
-	var choices := HBoxContainer.new()
-	choices.alignment = BoxContainer.ALIGNMENT_CENTER
-	choices.add_theme_constant_override("separation", 20)
-	shell.add_child(choices)
-	var heal := _camp_choice(choices, "歇息", "将当前生命恢复至上限。\n当前生命 %d / %d" % [game.state.hp, game.state.max_hp])
-	_button(heal, "回满生命", func(): _accept(game.rest(-1)), true).name = "CampHeal"
-	var upgrade := _camp_choice(choices, "淬炼", "永久强化牌组中的一张卡牌。\n已强化的卡牌不可再次升级。")
-	_button(upgrade, "选择要强化的卡牌", _show_deck.bind("upgrade"))
-	var cleanse := _camp_choice(choices, "舍弃", "支付 %d 点当前生命，舍弃一件限时负面道具、诅咒或永久负面道具。被舍弃的道具不会转化。" % ExpeditionItems.CAMP_COST)
-	var negatives := _negative_item_ids()
-	var drop := _button(cleanse, "选择负面道具", _show_camp_discard)
-	drop.name = "CampDiscard"
-	if negatives.is_empty():
-		drop.disabled = true
-		drop.text = "没有随行负面道具"
-	elif int(game.state.hp) <= ExpeditionItems.CAMP_COST:
-		drop.disabled = true
-		drop.text = "生命不足以支付"
-	_spacer(shell, true)
+	CampScreen.build_rest(self)
 
 
 func _camp_choice(parent: Node, title_text: String, body_text: String) -> VBoxContainer:
-	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(336, 268)
-	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	panel.add_theme_stylebox_override("panel", _sts_box(Color(0.072, 0.063, 0.050, 0.94), Color(0.46, 0.37, 0.23, 0.6), 1))
-	parent.add_child(panel)
-	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 20)
-	margin.add_theme_constant_override("margin_right", 20)
-	margin.add_theme_constant_override("margin_top", 18)
-	margin.add_theme_constant_override("margin_bottom", 16)
-	panel.add_child(margin)
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 10)
-	margin.add_child(box)
-	_label(box, _spaced(title_text), 13, GOLD)
-	_label(box, title_text, 34, PAPER, true)
-	_paragraph(box, body_text, 17)
-	_spacer(box, true)
-	return box
+	return CampScreen._camp_choice(self, parent, title_text, body_text)
 
 
 func _negative_item_ids() -> Array:
-	return game.state.items.keys().filter(func(id): return ExpeditionItems.is_negative(game.item_data(str(id))))
+	return CampScreen._negative_item_ids(self)
 
 
 func _show_camp_discard() -> void:
-	var box := _modal("舍弃负面道具", "选择后失去 %d 点当前生命，并离开本处营地。" % ExpeditionItems.CAMP_COST)
-	var scroll := ScrollContainer.new()
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	box.add_child(scroll)
-	var list := VBoxContainer.new()
-	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.add_child(list)
-	for id in _negative_item_ids():
-		var item_id := str(id)
-		var item: Dictionary = game.item_data(item_id)
-		var row := _panel(list)
-		var detail_row := HBoxContainer.new()
-		detail_row.add_theme_constant_override("separation", 10)
-		row.add_child(detail_row)
-		_add_item_icon(detail_row, item, "item", 40.0)
-		_paragraph(detail_row, _expedition_item_detail(item_id), 18)
-		_button(row, "舍弃「%s」 · 失去 %d 生命" % [item.name, ExpeditionItems.CAMP_COST], _discard_camp_item.bind(item_id)).name = "CampDrop_" + item_id
+	CampScreen._show_camp_discard(self)
 
 
 func _discard_camp_item(id: String) -> void:
-	var result: Dictionary = game.discard_negative_item(id)
-	if result.get("ok", false):
-		_clear(overlay)
-	_accept(result)
+	CampScreen._discard_camp_item(self, id)
 
 
 func _event() -> void:
-	var event_data: Dictionary = game.state.event
-	var shell := _room_shell("长夜奇遇", str(event_data.get("name", "无名之地")), "", null)
-	var story := PanelContainer.new()
-	story.name = "EventStory"
-	story.add_theme_stylebox_override("panel", _sts_box(Color(0.086, 0.076, 0.060, 0.92), Color(0.46, 0.37, 0.23, 0.4), 1))
-	shell.add_child(story)
-	var story_row := HBoxContainer.new()
-	story_row.add_theme_constant_override("separation", 16)
-	story.add_child(story_row)
-	var bar := ColorRect.new()
-	bar.color = Color(0.72, 0.58, 0.34, 0.75)
-	bar.custom_minimum_size.x = 3
-	story_row.add_child(bar)
-	var story_margin := MarginContainer.new()
-	story_margin.add_theme_constant_override("margin_left", 14)
-	story_margin.add_theme_constant_override("margin_right", 18)
-	story_margin.add_theme_constant_override("margin_top", 12)
-	story_margin.add_theme_constant_override("margin_bottom", 12)
-	story_margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	story_row.add_child(story_margin)
-	_paragraph(story_margin, str(event_data.get("description", "")), 21, PAPER)
-	var choices: Array = event_data.get("choices", [])
-	var is_altar := str(event_data.get("id", "")) == "expedition_offer"
-	var has_cards := false
-	for choice in choices:
-		has_cards = has_cards or choice.has("card")
-	var choice_parent: Control = shell
-	if has_cards:
-		var scroll := ScrollContainer.new()
-		scroll.name = "EventChoices"
-		scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-		scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-		shell.add_child(scroll)
-		var columns := HBoxContainer.new()
-		columns.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		columns.size_flags_vertical = Control.SIZE_EXPAND_FILL
-		columns.add_theme_constant_override("separation", 16)
-		scroll.add_child(columns)
-		choice_parent = columns
-	else:
-		_spacer(shell, true)
-	for index in range(choices.size()):
-		var choice: Dictionary = choices[index]
-		var row := _panel(choice_parent)
-		row.name = "EventChoice_%d" % index
-		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		row.get_parent().size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		if has_cards:
-			row.custom_minimum_size.x = 260
-		else:
-			row.custom_minimum_size.x = 980
-			row.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-		var offered_items: Array = choice.get("items", [])
-		var visible_item_ids: Array = offered_items.duplicate()
-		if choice.has("relic"):
-			visible_item_ids.append(str(choice.relic))
-		var description := str(choice.get("description", ""))
-		if is_altar and offered_items.any(func(id): return game.item_data(str(id)).get("kind", "") == "permanent"):
-			description = ExpeditionItems.PERMANENT_OFFER_DESCRIPTION
-		_paragraph(row, description, 17)
-		if not visible_item_ids.is_empty():
-			var offered_icons := HBoxContainer.new()
-			offered_icons.name = "EventChoiceItemIcons_%d" % index
-			offered_icons.add_theme_constant_override("separation", 7)
-			for item_id in visible_item_ids:
-				var item_definition: Dictionary = game.item_data(str(item_id))
-				var item_category := "item"
-				if item_definition.is_empty():
-					item_definition = game.relic_data(str(item_id))
-					item_category = "relic"
-				if not item_definition.is_empty():
-					_add_item_icon(offered_icons, item_definition, item_category, 42.0)
-			row.add_child(offered_icons)
-		var effects: Array[String] = []
-		for key in ["hp", "gold", "max_hp", "heal"]:
-			if choice.has(key) and int(choice[key]) != 0:
-				effects.append("%s %+d" % [{"hp": "生命", "gold": "金币", "max_hp": "生命上限", "heal": "回复生命"}[key], int(choice[key])])
-		if choice.has("card"):
-			effects.append("获得卡牌「%s」" % game.card_data(str(choice.card)).get("name", choice.card))
-		if choice.has("relic"):
-			var relic: Dictionary = game.relic_data(str(choice.relic))
-			effects.append("获得遗物「%s」：%s" % [relic.get("name", choice.relic), relic.get("description", "")])
-		for id in offered_items:
-			effects.append(_expedition_item_detail(str(id)))
-		var effect_text := "；".join(effects) if not effects.is_empty() else "不改变生命或资源"
-		# 数据里的 description 往往已经写明代价/收益；只对道具类选择补一行结构化说明，避免整行重复。
-		if choice.has("items") or description.strip_edges().is_empty():
-			if effect_text != description:
-				_paragraph(row, effect_text, 17, GOLD)
-		if choice.has("card"):
-			var instance := {"id": str(choice.card), "upgraded": false}
-			var definition: Dictionary = game.card_view(instance)
-			if not definition.is_empty():
-				var preview := _card(row, instance, func(): pass, Vector2(230, 248), "preview")
-				preview.name = "EventCard_%d" % index
-				preview.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-				preview.get_node("CardVisual/Availability").text = "选择下方选项获得此牌"
-				var detail := _paragraph(row, str(definition.get("description", "")), 16, PAPER)
-				detail.name = "EventCardEffect_%d" % index
-		if has_cards:
-			_spacer(row, true)
-		var pick := _button(row, str(choice.get("label", "继续")), func(): _accept(game.choose_event(index)))
-		pick.name = "EventPick_%d" % index
-		var cannot_pay: bool = int(game.state.gold) + int(choice.get("gold", 0)) < 0 or int(game.state.hp) + int(choice.get("hp", 0)) <= 0 or int(game.state.max_hp) + int(choice.get("max_hp", 0)) <= 0
-		var already_owned: bool = choice.has("relic") and game.state.relics.has(str(choice.relic))
-		pick.disabled = cannot_pay or already_owned
-		if already_owned:
-			pick.text += " · 已拥有此遗物"
-		elif cannot_pay:
-			pick.text += " · 无法支付代价"
-	if not has_cards:
-		_spacer(shell, true)
+	EventScreen.build_event(self)
 
 
 func _treasure() -> void:
-	var shell := _room_shell("遗落的馈赠", "旧箱中仍藏着希望", "以下物品已经加入行囊。", null)
-	_spacer(shell, true)
-	var relic: Dictionary = game.relic_data(str(game.state.get("boss_reward", "")))
-	var center := CenterContainer.new()
-	center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	shell.add_child(center)
-	var prize := VBoxContainer.new()
-	prize.alignment = BoxContainer.ALIGNMENT_CENTER
-	prize.add_theme_constant_override("separation", 12)
-	center.add_child(prize)
-	var opened := _label(prize, _spaced("宝 箱 已 开"), 13, GOLD)
-	opened.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_add_item_icon(prize, relic, "relic", 88.0)
-	var coins := _label(prize, "+25 金币", 30, GOLD, true)
-	coins.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	var relic_name := _label(prize, str(relic.get("name", "遗留的祝福")), 42, PAPER, true)
-	relic_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	var rule := HBoxContainer.new()
-	rule.alignment = BoxContainer.ALIGNMENT_CENTER
-	rule.add_theme_constant_override("separation", 12)
-	prize.add_child(rule)
-	var left_rule := _room_rule(Color(0.46, 0.37, 0.23, 0.4))
-	left_rule.custom_minimum_size.x = 120
-	left_rule.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	rule.add_child(left_rule)
-	_label(rule, "◆", 14, GOLD)
-	var right_rule := _room_rule(Color(0.46, 0.37, 0.23, 0.4))
-	right_rule.custom_minimum_size.x = 120
-	right_rule.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	rule.add_child(right_rule)
-	var relic_text := _paragraph(prize, str(relic.get("description", "")), 20, PAPER)
-	relic_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	relic_text.custom_minimum_size.x = 620
-	_spacer(shell, true)
-	var controls := HBoxContainer.new()
-	controls.alignment = BoxContainer.ALIGNMENT_CENTER
-	shell.add_child(controls)
-	_wide_button(controls, "收好行囊，继续前行  →", func(): _accept(game.leave_room()), 380)
+	EventScreen.build_treasure(self)
 
 
 func _ending() -> void:
@@ -3057,8 +2764,11 @@ func _ending() -> void:
 	stats.alignment = BoxContainer.ALIGNMENT_CENTER
 	stats.add_theme_constant_override("separation", 14)
 	column.add_child(stats)
-	for entry in [["难度", _difficulty_name(level)], ["抵达", "%s · 第 %d 层" % [_chapter().get("name", "长夜"), int(game.state.row) + 1]], ["历经", "%d 回合" % int(game.state.elapsed_turns)], ["牌组", "%d 张" % game.state.deck.size()], ["遗物", "%d 件" % game.state.relics.size()]]:
+	for entry in [["得分", "%d" % int(game.state.score)], ["难度", _difficulty_name(level)], ["抵达", "%s · 第 %d 层" % [_chapter().get("name", "长夜"), int(game.state.row) + 1]], ["历经", "%d 回合" % int(game.state.elapsed_turns)], ["牌组", "%d 张" % game.state.deck.size()], ["遗物", "%d 件" % game.state.relics.size()]]:
 		var chip := PanelContainer.new()
+		if str(entry[0]) == "得分":
+			chip.name = "ScoreStat"
+			chip.tooltip_text = "本局得分：战斗、精英与首领都会累计。"
 		chip.add_theme_stylebox_override("panel", _sts_box(Color(0.10, 0.088, 0.070, 0.92), Color(0.42, 0.34, 0.22, 0.6), 1))
 		stats.add_child(chip)
 		var chip_margin := MarginContainer.new()
@@ -3074,6 +2784,13 @@ func _ending() -> void:
 		key_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		var value_label := _label(chip_box, str(entry[1]), 17, PAPER)
 		value_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		if str(entry[0]) == "得分":
+			value_label.name = "ScoreValue"
+	if bool(game.state.get("daily", false)):
+		var record: Dictionary = game.profile.get("daily", {})
+		var daily_summary := _label(column, "今日最佳 %d 分 · 连续 %d 天" % [int(record.get("best", 0)), int(record.get("streak", 0))], 17, GOLD)
+		daily_summary.name = "DailyEndingSummary"
+		daily_summary.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_spacer(column, true)
 	var controls := HBoxContainer.new()
 	controls.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -3744,7 +3461,7 @@ func _menu() -> void:
 	var margin := MarginContainer.new()
 	margin.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	margin.add_theme_constant_override("margin_left", 66)
-	margin.add_theme_constant_override("margin_top", 38)
+	margin.add_theme_constant_override("margin_top", 30)
 	content.add_child(margin)
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 8)
@@ -3758,12 +3475,12 @@ func _menu() -> void:
 	rule.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	column.add_child(rule)
 	var breath := Control.new()
-	breath.custom_minimum_size.y = 30
+	breath.custom_minimum_size.y = 16
 	column.add_child(breath)
 	var actions := VBoxContainer.new()
 	actions.custom_minimum_size.x = 350
 	actions.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-	actions.add_theme_constant_override("separation", 5)
+	actions.add_theme_constant_override("separation", 3)
 	column.add_child(actions)
 	var resume := _menu_entry(actions, "继续旅程", func():
 		menu_open = false
@@ -3774,6 +3491,19 @@ func _menu() -> void:
 		menu_page = "roles"
 		_refresh())
 	begin.name = "NewJourneyButton"
+	var daily_box := VBoxContainer.new()
+	daily_box.add_theme_constant_override("separation", 1)
+	actions.add_child(daily_box)
+	var daily_view: Dictionary = game.daily_view()
+	var daily := _menu_entry(daily_box, "每日誓约", func():
+		daily_error = ""
+		menu_page = "daily"
+		_refresh())
+	daily.name = "DailyVowButton"
+	daily.tooltip_text = "每日·%s · %s · %s" % [str(daily_view.get("role_name", "旅者")), str(daily_view.get("oath", {}).get("name", "")), str(daily_view.get("modifier", {}).get("name", ""))]
+	var daily_note := _label(daily_box, "      " + _daily_menu_subtitle(daily_view), 12, Color("9a8f79"))
+	daily_note.add_theme_constant_override("outline_size", 0)
+	daily_note.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_menu_entry(actions, "新手教学", func():
 		menu_page = "tutorial"
 		_refresh()).name = "TutorialButton"
@@ -3788,6 +3518,9 @@ func _menu() -> void:
 	var status := "尚无进行中的旅程"
 	if game.state.active:
 		status = "%s · %s · 第 %d 层" % [game.role_data(str(game.state.role)).get("name", "旅者"), _chapter().get("name", "长夜"), int(game.state.row) + 1]
+	var daily_record: Dictionary = game.profile.get("daily", {})
+	if int(daily_record.get("streak", 0)) > 0 or int(daily_record.get("best", 0)) > 0:
+		status += "   /   今日最佳 %d 分 · 连续 %d 天" % [int(daily_record.get("best", 0)), int(daily_record.get("streak", 0))]
 	_label(column, "本地存档  /  " + status, 15, MUTED)
 	_label(column, "卡牌收集 %d / %d    ·    成就 %d / %d" % [game.profile.seen_cards.size(), game.data.cards.size(), game.profile.achievements.size(), game.achievement_entries().size()], 15, GOLD)
 	var foot := HBoxContainer.new()
@@ -3812,6 +3545,120 @@ func _menu() -> void:
 	(func():
 		if is_instance_valid(focus_target) and focus_target.is_inside_tree():
 			focus_target.grab_focus()).call_deferred()
+
+
+func _daily_menu_subtitle(view: Dictionary) -> String:
+	if bool(view.get("active", false)):
+		return "进行中 · 今日最佳 %d 分 · 连续 %d 天" % [int(view.get("best", 0)), int(view.get("streak", 0))]
+	if int(view.get("attempts", 0)) > 0:
+		return "今日最佳 %d 分 · 连续 %d 天" % [int(view.get("best", 0)), int(view.get("streak", 0))]
+	var modifier: Dictionary = view.get("modifier", {})
+	return "%s · %s" % [str(view.get("role_name", "旅者")), str(modifier.get("name", "长夜"))]
+
+
+func _daily_modifier_name(modifier_id: String) -> String:
+	var view: Dictionary = game.daily_view()
+	var modifier: Dictionary = view.get("modifier", {})
+	if modifier_id.is_empty() or str(modifier.get("id", "")) == modifier_id:
+		return str(modifier.get("name", "长夜"))
+	return "长夜"
+
+
+func _daily_fact(parent: Node, caption: String, value: String, tone: Color = PAPER) -> PanelContainer:
+	var frame := PanelContainer.new()
+	frame.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	frame.add_theme_stylebox_override("panel", _sts_box(Color(0.082, 0.078, 0.064, 0.92), Color(0.32, 0.28, 0.22, 0.85), 1))
+	parent.add_child(frame)
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 0)
+	frame.add_child(column)
+	var key := _label(column, caption, 11, Color("9a8f79"))
+	key.add_theme_constant_override("outline_size", 0)
+	_label(column, value, 16, tone, true)
+	return frame
+
+
+func _start_daily() -> void:
+	var result: Dictionary = game.start_daily_run()
+	if bool(result.get("ok", false)):
+		daily_error = ""
+		notice = str(result.get("message", "今日誓约已开始。"))
+		menu_open = false
+		selected_target = 0
+		_refresh()
+		_show_achievement_toast(result.get("achievements", []))
+		return
+	daily_error = str(result.get("message", "今日誓约无法开始。"))
+	notice = daily_error
+	_refresh()
+
+
+func _daily() -> void:
+	var view: Dictionary = game.daily_view()
+	var oath: Dictionary = view.get("oath", {})
+	var modifier: Dictionary = view.get("modifier", {})
+	var frame := PanelContainer.new()
+	frame.name = "DailyVowScreen"
+	frame.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	frame.add_theme_stylebox_override("panel", _sts_box(Color(0.05, 0.046, 0.04, 0.93), Color(0.46, 0.37, 0.23, 0.55), 1))
+	content.add_child(frame)
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 54)
+	margin.add_theme_constant_override("margin_right", 54)
+	margin.add_theme_constant_override("margin_top", 28)
+	margin.add_theme_constant_override("margin_bottom", 22)
+	frame.add_child(margin)
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 10)
+	margin.add_child(column)
+	_label(column, "D A I L Y   V O W", 13, GOLD)
+	_label(column, "每日誓约", 42, PAPER, true)
+	_paragraph(column, "每天只有一场考验。角色、誓约与长夜变体都由日期决定，所有旅者面对同一夜。", 17, MUTED)
+	column.add_child(_room_rule())
+	var facts := HBoxContainer.new()
+	facts.add_theme_constant_override("separation", 10)
+	column.add_child(facts)
+	_daily_fact(facts, "日期", str(view.get("key", "")))
+	_daily_fact(facts, "今日角色", str(view.get("role_name", "旅者")))
+	_daily_fact(facts, "今日誓约", str(oath.get("name", "—")))
+	_daily_fact(facts, "长夜变体", str(modifier.get("name", "—")))
+	var detail := _panel(column, Color(0.072, 0.078, 0.062, 0.95), Color(0.40, 0.35, 0.24, 0.75))
+	detail.get_parent().name = "DailyVowDetail"
+	_label(detail, "%s · %s" % [str(oath.get("name", "誓约")), str(oath.get("kicker", ""))], 20, GOLD, true)
+	_paragraph(detail, "恩惠：%s" % str(oath.get("boon", "")), 15, PAPER)
+	_paragraph(detail, "代价：%s" % str(oath.get("price", "")), 15, MUTED)
+	_label(detail, "长夜变体 · %s" % str(modifier.get("name", "")), 15, GOLD)
+	_paragraph(detail, str(modifier.get("description", "")), 15, PAPER)
+	var stats := HBoxContainer.new()
+	stats.add_theme_constant_override("separation", 10)
+	column.add_child(stats)
+	_daily_fact(stats, "今日最佳", "%d 分" % int(view.get("best", 0)))
+	_daily_fact(stats, "连续天数", "%d 天" % int(view.get("streak", 0)))
+	_daily_fact(stats, "尝试次数", "%d 次" % int(view.get("attempts", 0)))
+	var status := _paragraph(column, str(view.get("status", "")), 15, GOLD if bool(view.get("can_start", true)) else MUTED)
+	status.name = "DailyStatusText"
+	if not daily_error.is_empty():
+		var failure := _paragraph(column, daily_error, 15, RED)
+		failure.name = "DailyError"
+	_spacer(column, true)
+	var controls := HBoxContainer.new()
+	controls.add_theme_constant_override("separation", 14)
+	column.add_child(controls)
+	var start := _wide_button(controls, "继续今日誓约" if bool(view.get("active", false)) else "开始今日誓约", _start_daily, 300)
+	start.name = "StartDailyButton"
+	start.add_theme_stylebox_override("normal", _sts_box(Color(0.40, 0.32, 0.18, 0.98), GOLD, 1, true))
+	start.add_theme_stylebox_override("hover", _sts_box(Color(0.48, 0.39, 0.22, 1.0), GOLD, 1, true))
+	start.add_theme_stylebox_override("pressed", _sts_box(Color(0.33, 0.26, 0.14, 0.98), GOLD, 1))
+	start.add_theme_color_override("font_color", Color("f3e7cd"))
+	start.add_theme_color_override("font_hover_color", PAPER)
+	start.tooltip_text = "今日：%s · %s · %s" % [str(view.get("key", "")), str(oath.get("name", "")), str(modifier.get("name", ""))]
+	_spacer(controls)
+	var back := _button(controls, "← 返回主菜单", func():
+		menu_page = "title"
+		_refresh())
+	back.name = "DailyBackButton"
+	back.custom_minimum_size = Vector2(180, 50)
+	_footer()
 
 
 func _workshop() -> void:
@@ -4041,7 +3888,7 @@ func _tutorial_result() -> void:
 func _menu_entry(parent: Node, title: String, callback: Callable) -> Button:
 	var button := _button(parent, "   " + title, callback)
 	button.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	button.custom_minimum_size = Vector2(350, 51)
+	button.custom_minimum_size = Vector2(350, 46)
 	button.add_theme_font_size_override("font_size", 25)
 	button.add_theme_font_override("font", heading_font)
 	button.add_theme_stylebox_override("normal", _style(Color(0, 0, 0, 0), Color(0, 0, 0, 0)))
@@ -4052,6 +3899,12 @@ func _menu_entry(parent: Node, title: String, callback: Callable) -> Button:
 	focus_style.set_border_width_all(0)
 	focus_style.border_width_bottom = 1
 	button.add_theme_stylebox_override("focus", focus_style)
+	# 标题页多了一条入口，条目高度收紧 5px（内容边距 8 → 3）以免整页溢出。
+	for state_name in ["normal", "hover", "pressed", "disabled", "focus"]:
+		var box := button.get_theme_stylebox(state_name)
+		if box is StyleBoxFlat:
+			(box as StyleBoxFlat).content_margin_top = 3
+			(box as StyleBoxFlat).content_margin_bottom = 3
 	var enter := func():
 		button.text = "◆  " + title
 		_sfx("click", 0.01, -24.0)

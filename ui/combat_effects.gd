@@ -98,25 +98,52 @@ func _attack(effect: Dictionary, progress: float, color: Color) -> void:
 	var origin: Vector2 = effect["from"]
 	var target: Vector2 = effect["to"]
 	var direction := (target - origin).normalized()
-	var head := origin.lerp(target, minf(progress * 2.8, 1.0))
+	# 1) 起手蓄力：出发点一团收束的光，交代"谁出手"。
+	if progress < 0.24:
+		var charge := 1.0 - progress / 0.24
+		draw_circle(origin, 4.0 + 7.0 * (1.0 - charge), Color(color, color.a * 0.22 * charge))
+		draw_circle(origin, 2.4, Color(BONE, color.a * 0.75 * charge))
+	# 2) 飞行拖尾：外层柔光 + 中层色带 + 内核白线，尾端散几粒余烬。
+	var head := origin.lerp(target, minf(progress * 3.2, 1.0))
 	if progress < 0.42:
-		var tail := origin.lerp(head, maxf(0.0, 1.0 - 86.0 / maxf(origin.distance_to(head), 1.0)))
-		draw_line(tail, head, Color(color, color.a * 0.28), 18, true)
-		draw_line(tail, head, color, 4, true)
-		draw_circle(head, 5, BONE)
+		var span := maxf(origin.distance_to(head), 1.0)
+		var tail := origin.lerp(head, maxf(0.0, 1.0 - 96.0 / span))
+		draw_line(tail, head, Color(color, color.a * 0.14), 26.0, true)
+		draw_line(tail, head, Color(color, color.a * 0.50), 10.0, true)
+		draw_line(tail, head, Color(BONE, color.a * 0.95), 3.0, true)
+		draw_circle(head, 4.5, Color(BONE, color.a))
+		for index in 3:
+			var t := fmod(progress * 4.2 + float(index) * 0.33, 1.0)
+			draw_circle(tail.lerp(head, t), 1.5, Color(color, color.a * 0.28 * (1.0 - t)))
 		if str(effect.style) in ["magic", "poison", "projectile"]:
-			draw_arc(head, 12, 0, TAU, 24, Color(color, color.a * 0.8), 2.0, true)
-	if progress > 0.16:
-		var spread := minf((progress - 0.16) * 4.4, 1.0)
-		var slash := Vector2(34, -46)
-		draw_line(target - slash * spread, target + slash * spread, Color(color, color.a * 0.3), 16, true)
-		draw_line(target - slash * spread, target + slash * spread, Color(BONE, color.a), 3.2, true)
-		if str(effect.style) == "slash":
-			draw_line(target - Vector2(24, 30) * spread, target + Vector2(24, 30) * spread, color, 2.0, true)
-		draw_arc(target, 12 + spread * 18, 0, TAU, 28, Color(BONE, color.a * 0.7), 2.0, true)
-		for i in 6:
-			var ray := direction.rotated((i - 2.5) * 0.52)
-			draw_line(target + ray * (6 + progress * 12), target + ray * (22 + progress * 40), color, 2.0, true)
+			draw_arc(head, 13.0, 0, TAU, 24, Color(color, color.a * 0.75), 2.0, true)
+	# 3) 命中：月牙弧光叠冲击波，再加锥形火花与尘团，打出"斩进去"的层次。
+	if progress > 0.14:
+		var hit := clampf((progress - 0.14) / 0.86, 0.0, 1.0)
+		var reach := 18.0 + 66.0 * pow(hit, 0.45)
+		var base_angle := (origin - target).angle()
+		for index in 3:
+			var radius := reach * (1.0 + 0.17 * float(index))
+			var width := (7.5 - 1.9 * float(index)) * (1.0 - 0.55 * hit)
+			var span := deg_to_rad(96.0 - 10.0 * float(index))
+			draw_arc(target, radius, base_angle - span * 0.5, base_angle + span * 0.5, 26,
+				Color(color, color.a * (0.52 - 0.12 * float(index))), maxf(1.0, width), true)
+		draw_arc(target, reach * 0.86, base_angle - deg_to_rad(46.0), base_angle + deg_to_rad(46.0), 22,
+			Color(BONE, color.a * 0.9), maxf(1.0, 4.0 * (1.0 - hit)), true)
+		var ring := 10.0 + 56.0 * hit
+		draw_arc(target, ring, 0, TAU, 40, Color(BONE, color.a * 0.34 * (1.0 - hit)), 2.0, true)
+		draw_arc(target, ring * 0.72, 0, TAU, 32, Color(color, color.a * 0.22 * (1.0 - hit)), 1.0, true)
+		for index in 9:
+			var spread_angle := (float(index) - 4.0) * 0.20
+			var ray := direction.rotated(spread_angle)
+			var length := 10.0 + 46.0 * pow(hit, 0.7) * (1.0 - absf(float(index) - 4.0) * 0.08)
+			draw_line(target + ray * ring * 0.68, target + ray * (ring * 0.68 + length),
+				Color(color, color.a * (0.78 - absf(float(index) - 4.0) * 0.13)), 2.0, true)
+		for index in 5:
+			var angle := TAU * float(index) / 5.0 + 0.5
+			var distance := ring * (0.55 + 0.20 * float(index % 2))
+			draw_circle(target + Vector2.from_angle(angle) * distance, 2.0 + 3.6 * hit,
+				Color(0.55, 0.48, 0.40, color.a * 0.09 * (1.0 - hit)))
 
 
 func _area(effect: Dictionary, progress: float, color: Color) -> void:
