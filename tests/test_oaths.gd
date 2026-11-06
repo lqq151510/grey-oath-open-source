@@ -209,7 +209,11 @@ func _test_daily() -> void:
 	var one = Rules.new("")
 	check(one.start_daily_run(key).ok, "daily journey starts")
 	check(bool(one.state.daily) and one.state.daily_key == key, "daily state is stamped")
-	check(one.state.daily_modifier == str(one.daily_view().modifier.id), "daily twist is stored")
+	# daily_view() 读取“今天”的日期键；这里用注入的 key 复算，避免跨日期运行测试时
+	# 把注入日期的局和当天的变体相互比较。变体仅由日期键派生，与角色表无关。
+	var expected_twist := str(Oaths.daily_setup(key, []).modifier.id)
+	check(one.state.daily_modifier == expected_twist, "daily twist is stored")
+	check(not str(one.state.daily_modifier).is_empty(), "daily twist is never empty")
 	check(one.start_daily_run(key).ok, "same day daily can be continued")
 	one._finish_run(false)
 	var entry: Dictionary = one.profile.daily

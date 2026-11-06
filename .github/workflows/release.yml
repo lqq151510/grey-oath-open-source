@@ -1,0 +1,81 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: '发布版本 Tag（如 v0.2.4）'
+        required: true
+        default: 'v0.2.4'
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    name: Build & Release Dual Platform
+    runs-on: macos-14
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install Godot 4.7.2 Toolchain & Export Templates
+        run: |
+          python3 scripts/setup_engine.py
+
+      - name: Run Headless Test Matrix
+        run: |
+          bash scripts/run_tests.sh
+
+      - name: Build & Package macOS Artifacts (Universal DMG & ZIP)
+        env:
+          GREY_OATH_BUILD_DIR: ${{ github.workspace }}/build/macos-release
+        run: |
+          bash scripts/package_macos.sh
+
+      - name: Build & Package Windows Artifacts (x86_64 ZIP & PCK)
+        env:
+          GREY_OATH_BUILD_DIR: ${{ github.workspace }}/build/windows-release
+        run: |
+          bash scripts/package_windows.sh
+
+      - name: Prepare Artifacts & Checksums
+        run: |
+          TAG="${{ github.ref_name }}"
+          if [ -z "$TAG" ]; then
+            TAG="${{ github.event.inputs.tag }}"
+          fi
+          
+          mkdir -p dist
+          cp build/macos-release/灰誓-macOS.dmg "dist/GreyOath-${TAG}-macOS.dmg"
+          cp build/macos-release/灰誓-macOS.zip "dist/GreyOath-${TAG}-macOS.zip"
+          cp build/windows-release/灰誓-Windows-x86_64.zip "dist/GreyOath-${TAG}-Windows-x86_64.zip"
+          
+          cd dist
+          shasum -a 256 * > release-checksums.txt
+          echo "=== 产物校验和清单 ==="
+          cat release-checksums.txt
+
+      - name: Upload Artifacts to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name || github.event.inputs.tag }}
+          files: |
+            dist/GreyOath-*-macOS.dmg
+            dist/GreyOath-*-macOS.zip
+            dist/GreyOath-*-Windows-x86_64.zip
+            dist/release-checksums.txt
+          generate_release_notes: true

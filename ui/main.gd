@@ -465,6 +465,7 @@ func _refresh() -> void:
 	combat_actors.clear()
 	battle_followers.clear()
 	if is_instance_valid(combat_effects):
+		combat_effects.reduced_motion = bool(game.profile.settings.get("reduced_motion", false))
 		combat_effects.clear_effects()
 	_clear(content)
 	content.add_theme_constant_override("separation", 14)
@@ -1926,13 +1927,63 @@ func _show_card_feedback(card: Dictionary) -> void:
 	tween.parallel().tween_property(panel, "modulate:a", 1.0, 0.10).from(0.0)
 	tween.tween_property(panel, "modulate:a", 0.0, 0.28).set_delay(0.18)
 	tween.tween_callback(panel.queue_free)
+	# 脚下法阵：卡牌名交给上方铭牌，这里只铺出与卡牌类型对应的施法纹样。
+	if is_instance_valid(combat_effects):
+		var caster = combat_actors.get("player")
+		if caster != null and is_instance_valid(caster):
+			var school := str(card.get("type", "skill"))
+			combat_effects.play_skill(caster.get_impact_position() + Vector2(0, 32), "",
+				CombatEffects.school_tone(school), school)
+
+
+## 药剂按主要效果取演出色调：伤害 > 削弱 > 防御 > 回复 > 强化 > 通用。
+func _potion_kind(effects: Array) -> String:
+	var ops: Dictionary = {}
+	for effect in effects:
+		ops[str(effect.get("op", ""))] = true
+	for op in ["damage", "lifesteal"]:
+		if ops.has(op):
+			return "damage"
+	for op in ["poison", "weak", "vulnerable"]:
+		if ops.has(op):
+			return "hex"
+	if ops.has("block"):
+		return "defense"
+	if ops.has("heal"):
+		return "recovery"
+	for op in ["strength", "regen", "energy", "draw"]:
+		if ops.has(op):
+			return "buff"
+	return "utility"
 
 
 func _use_potion(slot: int) -> void:
 	if combat_busy:
 		return
 	_ensure_target()
-	_present_combat(game.use_potion(slot, selected_target))
+	var potion: Dictionary = {}
+	if slot >= 0 and slot < game.state.potions.size():
+		potion = game.potion_data(str(game.state.potions[slot]))
+	var result: Dictionary = game.use_potion(slot, selected_target)
+	_present_combat(result)
+	# 放在 _present_combat 之后：若规则没有产生事件，界面会先刷新，药瓶特效不会被清掉。
+	if not result.get("ok", false) or not is_instance_valid(combat_effects) or potion.is_empty():
+		return
+	var effects: Array = potion.get("effects", [])
+	var kind := _potion_kind(effects)
+	var caster = combat_actors.get("player")
+	if game._requires_enemy(effects):
+		var hostile = combat_actors.get("enemy:%d" % selected_target)
+		if hostile != null and is_instance_valid(hostile):
+			caster = hostile
+	if caster != null and is_instance_valid(caster):
+		combat_effects.play_potion(caster.get_impact_position(), str(potion.get("name", "药剂")),
+			CombatEffects.potion_tone(kind), kind)
+	match kind:
+		"recovery": _sfx("heal", 0.02, -10.0, 1.12)
+		"defense": _sfx("shield", 0.02, -11.0, 1.14)
+		"damage": _sfx("slash", 0.02, -14.0, 0.82)
+		_: _sfx("bell", 0.02, -14.0, 1.18)
 
 
 func _has_playable_cards() -> bool:
@@ -2068,11 +2119,12 @@ func _present_combat(result: Dictionary, card: Dictionary = {}) -> void:
 				if target != null and not area_points.has(target.get_impact_position()):
 					area_points.append(target.get_impact_position())
 		if not area_points.is_empty():
-			combat_effects.play_area(area_points)
+			combat_effects.play_area(area_points, CombatEffects.school_tone(str(card.get("type", "attack"))))
 			_begin_shake(6.0)
 	# Large multi-hit effects accelerate; even maximum-hit cards have a bounded display time.
 	var speed := float(game.profile.settings.get("combat_speed", 1.0))
 	var beat := minf(0.16, 3.0 / maxf(1.0, float(events.size()))) / speed
+	combat_effects.time_scale = speed
 	for event in events:
 		if generation != _combat_generation or not is_inside_tree():
 			return
@@ -2107,11 +2159,21 @@ func _present_combat(result: Dictionary, card: Dictionary = {}) -> void:
 					if not follower_attack or battle_followers.has(source_key):
 						source.play_attack()
 					var style := str(event.get("style", "slash"))
-					if follower_attack or (source_key == "player" and str(game.state.role) in ["ranger", "medium", "arcanist", "sister"]):
+					if source_key == "poison":
+						style = "poison"
+					elif source_key == "thorns":
+						style = "heavy"
+					elif source_key == "self":
+						style = "magic"
+					elif follower_attack or (source_key == "player" and str(game.state.role) in ["ranger", "medium", "arcanist", "sister"]):
 						style = "projectile"
 					elif source.archetype in ["caster", "eye", "sovereign"]:
 						style = "projectile"
-					combat_effects.play_attack(source.get_impact_position(), point, style, GOLD if source_key == "player" or follower_attack else RED)
+					elif source_key == "player" and not card.is_empty() and str(card.get("type", "")) == "skill":
+						style = "magic"
+					var damage_power := clampf(0.65 + float(int(event.get("amount", 0))) / 22.0, 0.65, 1.9)
+					combat_effects.play_attack(source.get_impact_position(), point, style,
+						GOLD if source_key == "player" or follower_attack else RED, damage_power)
 					# 受击等待与攻击动作的命中点对齐：之前固定 0.072s，目标会在挥臂/弹道到达前先受击。
 					var impact_wait: float = beat * 0.45
 					if source.has_method("attack_impact_delay"):
@@ -2124,7 +2186,8 @@ func _present_combat(result: Dictionary, card: Dictionary = {}) -> void:
 				target.play_hit(amount, blocked)
 				if blocked > 0:
 					target.play_guard()
-				combat_effects.play_hit(point, amount, blocked, source_key == "poison")
+				var heavy := amount >= 16
+				combat_effects.play_hit(point, amount, blocked, source_key == "poison", heavy)
 				if source_key in ["thorns", "self"]:
 					combat_effects.play_status(point + Vector2(0, 28), "荆棘反伤" if source_key == "thorns" else "生命代价", MUTED)
 				if amount > 0:
@@ -2133,14 +2196,20 @@ func _present_combat(result: Dictionary, card: Dictionary = {}) -> void:
 					else:
 						_sfx("slash", 0.05, -5.0, 0.86 if source_key == "self" else 1.0)
 					var hurt_player := str(event.get("target", "")) == "player"
-					_pulse_impact(1.2 if hurt_player else 0.95, hurt_player)
-					_begin_shake(8.0 if hurt_player else 5.5)
+					# 打击感按实际伤害分级：闪屏、震动、顿帧和低频撞击同步放大。
+					_pulse_impact((1.2 if hurt_player else 0.95) + (0.28 if heavy else 0.0), hurt_player)
+					var shake := (4.0 + clampf(float(amount) * 0.32, 0.0, 6.0)) * (1.35 if hurt_player else 1.0)
+					_begin_shake(shake)
 					_hold_actors(true)
-					var pause := (0.062 / speed) if events.size() <= 2 else minf(0.045 / speed, beat * 0.28)
+					var pause := (0.062 + mini(0.028, float(amount) * 0.0018)) / speed
+					if events.size() > 2:
+						pause = minf(pause, beat * 0.28)
 					await get_tree().create_timer(pause).timeout
 					if generation != _combat_generation or not is_inside_tree():
 						return
 					_hold_actors(false)
+					if heavy:
+						_sfx("bell", 0.0, -18.0, 0.70)
 				elif blocked > 0:
 					_sfx("shield", 0.03, -8.0)
 					_begin_shake(1.8)
@@ -2158,10 +2227,12 @@ func _present_combat(result: Dictionary, card: Dictionary = {}) -> void:
 					source.play_guard()
 				else:
 					target.play_guard()
-				combat_effects.play_status(point, "奥斯蒂承伤 %d" % int(event.amount), Color("b59acb"))
+				combat_effects.play_guard(point, int(event.amount), Color("b59acb"),
+					"奥斯蒂承伤 %d" % int(event.amount))
 			"phase":
 				_show_turn_banner("首领 · 阶段 %d" % int(event.amount), "誓约未尽，交锋继续", RED)
 				target.play_guard()
+				combat_effects.play_skill(point + Vector2(0, 28), "", RED, "power")
 				combat_effects.play_status(point, "阶段 %d / %d" % [int(event.amount), int(game.state.boss_phases)], GOLD)
 				_sfx("bell", 0.0, -9.0, 0.8)
 			"heal":
@@ -2170,7 +2241,8 @@ func _present_combat(result: Dictionary, card: Dictionary = {}) -> void:
 				_sfx("heal", 0.03, -7.0)
 			"block":
 				target.play_guard()
-				combat_effects.play_status(point, "格挡 +%d" % int(event.amount), GREEN)
+				combat_effects.play_guard(point, int(event.amount))
+				_begin_shake(1.2)
 				_sfx("shield", 0.04, -8.0)
 			"status":
 				var key := str(event.get("style", ""))
@@ -2182,8 +2254,9 @@ func _present_combat(result: Dictionary, card: Dictionary = {}) -> void:
 					point = osty.get_impact_position()
 				var status_text := "格挡 −%d" % amount if key == "sunder" else "%s +%d" % [label, amount]
 				target.play_status_effect(key)
-				var tint := Color("e56f5c") if key == "vulnerable" else Color("8dd3e2") if key == "weak" else Color("91d49a") if key in ["regen", "poison"] else GOLD
-				combat_effects.play_status(point, status_text, tint)
+				# 属性加成按 key 分类：增益上升箭头、减益裂纹、资源闪电、充能球环绕。
+				var tint := CombatEffects.tone_for(key)
+				combat_effects.play_status(point, status_text, tint, key)
 		await get_tree().create_timer(beat).timeout
 	if generation != _combat_generation or not is_inside_tree():
 		return
@@ -2356,7 +2429,8 @@ func _animate_draws(draws: Array, new_turn: bool = false) -> void:
 		visible_count += 1
 	if not draws.is_empty():
 		# 往上偏开，避免压住右下角的「抽牌 N」计数。
-		combat_effects.play_status(origin + combat_effects.global_position + Vector2(-96, -58), "抽牌 +%d" % draws.size(), GOLD)
+		combat_effects.play_status(origin + combat_effects.global_position + Vector2(-96, -58),
+			"抽牌 +%d" % draws.size(), CombatEffects.tone_for("draw"), "draw")
 	await get_tree().create_timer(maxf(last_delay + travel + settle + 0.08, (0.60 if not draws.is_empty() else 0.36) / speed)).timeout
 	if generation == _combat_generation and is_inside_tree():
 		_refresh()

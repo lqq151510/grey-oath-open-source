@@ -1,0 +1,20 @@
+{
+	"failures": [],
+	"mode": "native viewport capture",
+	"save": "memory only",
+	"shots": [
+		"res://docs/evidence/combat-vfx-20261106/01-battle-baseline.png",
+		"res://docs/evidence/combat-vfx-20261106/02-attack-slash.png",
+		"res://docs/evidence/combat-vfx-20261106/03-attack-magic.png",
+		"res://docs/evidence/combat-vfx-20261106/04-attack-poison.png",
+		"res://docs/evidence/combat-vfx-20261106/05-attack-heavy.png",
+		"res://docs/evidence/combat-vfx-20261106/06-attack-projectile.png",
+		"res://docs/evidence/combat-vfx-20261106/07-area-sigil.png",
+		"res://docs/evidence/combat-vfx-20261106/08-defense-guard.png",
+		"res://docs/evidence/combat-vfx-20261106/09-recovery-heal.png",
+		"res://docs/evidence/combat-vfx-20261106/10-attribute-effects.png",
+		"res://docs/evidence/combat-vfx-20261106/11-potion-effects.png",
+		"res://docs/evidence/combat-vfx-20261106/12-skill-sigils.png",
+		"res://docs/evidence/combat-vfx-20261106/13-combined.png"
+	]
+}
